@@ -1,3 +1,11 @@
 FANTRAX_LEAGUE_ID=YOUR_LEAGUE_ID
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
 DISCORD_TRANSACTION_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
+
+# Firebase auth (pick one):
+# Option 1: Base64-encoded service account JSON (for Cloud Functions + CI)
+FIREBASE_SERVICE_ACCOUNT_BASE64=
+# Option 2: Path to service account JSON file (for local dev)
+GOOGLE_APPLICATION_CREDENTIALS=
+# Option 3: If using ADC (gcloud auth application-default login), set project ID
+GOOGLE_CLOUD_PROJECT=oneconstant

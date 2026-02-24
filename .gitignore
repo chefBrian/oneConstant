@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Transaction watcher state
+seen_transactions.json
+
+# Service account keys
+*-service-account*.json
