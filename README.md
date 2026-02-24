@@ -7,10 +7,10 @@ Fantasy baseball Discord bot that pulls H2H Categories league data from [Fantrax
 - **Standings** with movement arrows (up/down from previous week)
 - **Biggest winner & loser** by category differential
 - **Win/loss streaks** across scoring periods
-- **All-play records** — how each team would fare against every other team each week
-- **Luck ratings** — compares actual record to expected all-play record
-- **Category sweeps** — flags teams winning 80%+ of categories in a matchup
-- **Transaction tracking** — counts adds/drops per team during each scoring period
+- **All-play records** - how each team would fare against every other team each week
+- **Luck ratings** - compares actual record to expected all-play record
+- **Category sweeps** - flags teams winning 80%+ of categories in a matchup
+- **Transaction tracking** - counts adds/drops per team during each scoring period
 <table>
   <tr>
     <th>Weekly Recap</th>
@@ -108,6 +108,6 @@ Set these repository secrets:
 ## Notes
 
 - Built for **H2H Categories** leagues only (not rotisserie or points).
-- The Fantrax API is undocumented and reverse-engineered — response shapes may change without notice.
+- The Fantrax API is undocumented and reverse-engineered - response shapes may change without notice.
 - "Lower is better" categories (ERA, WHIP, BB/9, L, HRA) are hardcoded in `stats.py`. Update `LOWER_IS_BETTER` if your league categories differ.
 - The "latest completed period" is detected by checking which periods have non-zero matchup scores, not by date.
