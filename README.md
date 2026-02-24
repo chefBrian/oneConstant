@@ -69,6 +69,9 @@ Polls Fantrax for new transactions (adds, drops, trades, waiver claims) and post
 # Preview new transactions without posting
 python transaction_watcher.py --dry-run
 
+# Check once and exit
+python transaction_watcher.py --once
+
 # Watch for new transactions (polls every 30s by default)
 python transaction_watcher.py
 
@@ -79,7 +82,7 @@ python transaction_watcher.py --interval 60
 python transaction_watcher.py --test
 ```
 
-State is persisted in `seen_transactions.json` so previously posted transactions aren't re-sent. On first run, existing transactions are seeded automatically.
+State is persisted in Firestore so previously posted transactions aren't re-sent. On first run, existing transactions are seeded automatically.
 
 ## Architecture
 
@@ -95,15 +98,25 @@ transaction_watcher → FantraxClient → format_transaction_embed() / format_tr
 | `stats.py` | Stat computations (all-play, luck, streaks, category kings, etc.) |
 | `discord_formatter.py` | Formats stats into Discord embed payloads |
 | `transaction_watcher.py` | Polls Fantrax for new transactions/trades, posts to Discord |
+| `firestore_client.py` | Firestore state management for seen transaction IDs |
+| `main.py` | Cloud Functions HTTP entry points (triggered by Cloud Scheduler) |
 
-## Automated Recaps
+## Cloud Functions
 
-A GitHub Actions workflow runs every Monday at 8:00 AM ET to post the weekly recap automatically. You can also trigger it manually with an optional scoring period input.
+Both the weekly recap and transaction watcher run as Google Cloud Functions (2nd gen), triggered by Cloud Scheduler.
 
-Set these repository secrets:
+| Function | Purpose |
+|----------|---------|
+| `watch_transactions` | Polls for new transactions on a schedule |
+| `weekly_recap` | Posts the weekly recap (accepts optional `?period=N` query param) |
+
+Endpoints are protected by a shared secret passed via the `X-Scheduler-Secret` header.
+
+Required env vars for deployment (set via `gcloud`):
 - `FANTRAX_LEAGUE_ID`
-- `DISCORD_WEBHOOK_URL`
-- `DISCORD_TRANSACTION_WEBHOOK_URL` (for the transaction watcher)
+- `DISCORD_WEBHOOK_URL` / `DISCORD_TRANSACTION_WEBHOOK_URL`
+- `SCHEDULER_SECRET`
+- Firebase auth (see `env-example.txt` for options)
 
 ## Notes
 
