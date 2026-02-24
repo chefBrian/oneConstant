@@ -26,12 +26,11 @@ def compute_weekly_stats(client: FantraxClient, period_num: int | None = None) -
     if not period or not period["matchups"]:
         return {"error": "No completed period found"}
 
-    standings = client.standings(period=period["period_num"])
-
-    # Previous period for standings movement
-    prev_standings = None
-    if period["period_num"] > 1:
-        prev_standings = client.standings(period=period["period_num"] - 1)
+    # Batch fetch standings + prev standings + transactions in one API call
+    batch = client.fetch_period_data(period["period_num"])
+    standings = batch["standings"]
+    prev_standings = batch["prev_standings"]
+    txns = batch["transactions"]
 
     return {
         "period": period,
@@ -46,7 +45,7 @@ def compute_weekly_stats(client: FantraxClient, period_num: int | None = None) -
         "streaks": _streaks(schedule, period["period_num"]),
         "luckiest_unluckiest": _luck_rating(standings, schedule, period["period_num"]),
         "category_sweeps": _category_sweeps(period),
-        "most_transactions": _most_transactions(client, period),
+        "most_transactions": _most_transactions_from_data(txns, period),
     }
 
 
@@ -341,22 +340,19 @@ def _category_sweeps(period: dict) -> list[dict]:
     return sweeps
 
 
-def _most_transactions(client: FantraxClient, period: dict) -> list[dict]:
+def _most_transactions_from_data(txns: list[dict], period: dict) -> list[dict]:
     """Count transactions per team during the scoring period, return sorted."""
     date_range = period["date_range"]  # "(Mon Jun 16, 2025 - Sun Jun 22, 2025)"
-    # Parse start/end dates
     stripped = date_range.strip("()")
     start_str, end_str = stripped.split(" - ")
     start = datetime.strptime(start_str.strip(), "%a %b %d, %Y")
     end = datetime.strptime(end_str.strip(), "%a %b %d, %Y").replace(hour=23, minute=59, second=59)
 
-    txns = client.transactions(count=500)
     counts = Counter()
     for t in txns:
         if not t.get("date"):
             continue
         try:
-            # Date format: "Sun Sep 28, 2025, 2:50PM" — parse just the date part
             parts = t["date"].split(",")
             txn_date = datetime.strptime(parts[0].strip() + "," + parts[1].strip(), "%a %b %d, %Y")
         except (ValueError, IndexError):

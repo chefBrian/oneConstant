@@ -62,6 +62,39 @@ class FantraxClient:
     def team_name(self, team_id: str) -> str:
         return self.team_map.get(team_id, team_id)
 
+    # --- Batch fetching ---
+
+    def fetch_period_data(self, period_num: int) -> dict:
+        """Fetch standings (current + previous) and transactions in parallel.
+
+        Uses separate client instances per thread since requests.Session is not thread-safe.
+        Returns {"standings": [...], "prev_standings": [...] or None, "transactions": [...]}
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _standings(period):
+            c = FantraxClient(self.league_id)
+            return c.standings(period=period)
+
+        def _transactions():
+            c = FantraxClient(self.league_id)
+            return c.transactions(count=500)
+
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            fut_standings = pool.submit(_standings, period_num)
+            fut_prev = pool.submit(_standings, period_num - 1) if period_num > 1 else None
+            fut_txns = pool.submit(_transactions)
+
+            standings = fut_standings.result()
+            prev_standings = fut_prev.result() if fut_prev else None
+            transactions = fut_txns.result()
+
+        return {
+            "standings": standings,
+            "prev_standings": prev_standings,
+            "transactions": transactions,
+        }
+
     # --- Standings ---
 
     def standings(self, period: int | None = None) -> list[dict]:
@@ -75,6 +108,10 @@ class FantraxClient:
         if period is not None:
             kwargs = {"period": period, "timeframeType": "BY_PERIOD", "timeStartType": "FROM_SEASON_START"}
         data = self._call("getStandings", **kwargs)
+        return self._parse_standings(data)
+
+    def _parse_standings(self, data: dict) -> list[dict]:
+        """Parse standings response data into a list of team dicts."""
         table = data["tableList"][0]
         header_keys = [c["key"] for c in table["header"]["cells"]]
 
@@ -232,13 +269,15 @@ class FantraxClient:
         Player dicts have: name, position
         """
         data = self._call("getTransactionDetailsHistory", maxResultsPerPage=count)
+        return self._parse_transactions(data)
+
+    def _parse_transactions(self, data: dict) -> list[dict]:
+        """Parse transaction response data into grouped transaction list."""
         if "table" not in data or "rows" not in data["table"]:
             return []
 
-        # Group rows by txSetId to pair claims with their drops
         from collections import OrderedDict
         groups: OrderedDict[str, dict] = OrderedDict()
-        # Track team/date from rows that have rowspan (parent rows)
         last_team = "Unknown"
         last_date = ""
 
@@ -249,7 +288,6 @@ class FantraxClient:
             code = row.get("transactionCode", "")
             claim_type = row.get("claimType", "")
 
-            # Extract team/date from cells if present (parent row has them)
             if "team" in cells:
                 last_team = cells["team"]["content"]
                 last_date = cells.get("date", {}).get("content", "")
@@ -284,7 +322,6 @@ class FantraxClient:
             elif code == "DROP":
                 group["dropped"] = player
 
-        # Set type based on what happened
         txns = []
         for g in groups.values():
             if g["added"] and g["dropped"]:

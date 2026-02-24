@@ -300,14 +300,14 @@ def _streaks_fields(stats: dict) -> list[dict]:
     if win_streaks:
         lines = [f"{s['count']} \u2013 {team}" for team, s in win_streaks[:3]]
         fields.append({
-            "name": "\U0001f4c8 Win Streak:",
+            "name": "\U0001f4c8 Winning Streak:",
             "value": "\n".join(lines),
             "inline": True,
         })
     if loss_streaks:
         lines = [f"{s['count']} \u2013 {team}" for team, s in loss_streaks[:3]]
         fields.append({
-            "name": "\U0001f4c9 Loss Streak:",
+            "name": "\U0001f4c9 Losing Streak:",
             "value": "\n".join(lines),
             "inline": True,
         })
