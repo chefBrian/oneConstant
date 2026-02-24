@@ -209,5 +209,8 @@ __marimo__/
 # Transaction watcher state
 seen_transactions.json
 
+# Planning notes
+PLAN.md
+
 # Service account keys
 *-service-account*.json
