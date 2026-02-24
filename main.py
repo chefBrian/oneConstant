@@ -2,8 +2,10 @@
 
 Deployed as 2nd gen HTTP functions, triggered by Cloud Scheduler.
 Env vars (set via gcloud deploy): FANTRAX_LEAGUE_ID, DISCORD_WEBHOOK_URL,
-DISCORD_TRANSACTION_WEBHOOK_URL, GOOGLE_CLOUD_PROJECT.
+DISCORD_TRANSACTION_WEBHOOK_URL, GOOGLE_CLOUD_PROJECT, SCHEDULER_SECRET.
 """
+import hashlib
+import hmac
 import os
 
 import functions_framework
@@ -12,8 +14,21 @@ from transaction_watcher import check_once
 from bot import run_recap
 
 
+def _verify_scheduler(request) -> bool:
+    """Verify the request came from Cloud Scheduler via a shared secret header."""
+    secret = os.environ.get("SCHEDULER_SECRET")
+    if not secret:
+        # No secret configured - allow (for backwards compat during rollout)
+        return True
+    token = request.headers.get("X-Scheduler-Secret", "")
+    return hmac.compare_digest(token, secret)
+
+
 @functions_framework.http
 def watch_transactions(request):
+    if not _verify_scheduler(request):
+        return "Unauthorized", 403
+
     league_id = os.environ.get("FANTRAX_LEAGUE_ID")
     webhook_url = os.environ.get("DISCORD_TRANSACTION_WEBHOOK_URL")
 
@@ -25,11 +40,14 @@ def watch_transactions(request):
         return "OK", 200
     except Exception as e:
         print(f"Error: {e}")
-        return f"Error: {e}", 500
+        return "Internal error", 500
 
 
 @functions_framework.http
 def weekly_recap(request):
+    if not _verify_scheduler(request):
+        return "Unauthorized", 403
+
     league_id = os.environ.get("FANTRAX_LEAGUE_ID")
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
 
@@ -44,4 +62,4 @@ def weekly_recap(request):
         return "OK", 200
     except Exception as e:
         print(f"Error: {e}")
-        return f"Error: {e}", 500
+        return "Internal error", 500
