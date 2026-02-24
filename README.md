@@ -63,20 +63,14 @@ The `--dry-run` flag prints the Discord embed JSON to stdout and doesn't require
 
 ### Transaction Watcher
 
-Polls Fantrax for new transactions (adds, drops, trades, waiver claims) and posts them to Discord in real time.
+Checks Fantrax for new transactions (adds, drops, trades, waiver claims) and posts them to Discord. In production this runs as a Cloud Function triggered by Cloud Scheduler.
 
 ```bash
-# Preview new transactions without posting
-python transaction_watcher.py --dry-run
-
-# Check once and exit
-python transaction_watcher.py --once
-
-# Watch for new transactions (polls every 30s by default)
+# Check for new transactions and post to Discord
 python transaction_watcher.py
 
-# Custom poll interval
-python transaction_watcher.py --interval 60
+# Preview without posting
+python transaction_watcher.py --dry-run
 
 # Post the most recent transaction and exit
 python transaction_watcher.py --test

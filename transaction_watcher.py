@@ -1,17 +1,14 @@
-"""Transaction watcher - polls Fantrax and posts new transactions to Discord.
+"""Transaction watcher - checks Fantrax for new transactions and posts to Discord.
 
 Usage:
-    python transaction_watcher.py                    # Run with env vars
-    python transaction_watcher.py --dry-run           # Preview without posting
-    python transaction_watcher.py --interval 60       # Poll every 60 seconds
-    python transaction_watcher.py --once              # Check once and exit
-    python transaction_watcher.py --test              # Post most recent transaction only
+    python transaction_watcher.py              # Check once and exit
+    python transaction_watcher.py --dry-run    # Preview without posting
+    python transaction_watcher.py --test       # Post most recent transaction only
 """
 import argparse
 import json
 import os
 import sys
-import time
 
 import requests
 
@@ -46,8 +43,8 @@ def fetch_all_tx_ids(client: FantraxClient) -> tuple[list[dict], list[dict]]:
 def check_once(league_id: str, webhook_url: str | None, dry_run: bool) -> None:
     """Single check cycle: fetch transactions, post new ones, update Firestore.
 
-    This is the core logic called by both the CLI (--once / --interval) and
-    the Cloud Functions entry point (main.py).
+    This is the core logic called by both the CLI and the Cloud Functions
+    entry point (main.py).
     """
     client = FantraxClient(league_id)
     txns, trades = fetch_all_tx_ids(client)
@@ -108,9 +105,7 @@ def main():
     parser = argparse.ArgumentParser(description="Watch Fantrax for new transactions")
     parser.add_argument("--league-id", default=os.environ.get("FANTRAX_LEAGUE_ID"))
     parser.add_argument("--webhook-url", default=os.environ.get("DISCORD_TRANSACTION_WEBHOOK_URL"))
-    parser.add_argument("--interval", type=int, default=30, help="Poll interval in seconds")
     parser.add_argument("--dry-run", action="store_true", help="Print embeds instead of posting")
-    parser.add_argument("--once", action="store_true", help="Check once and exit")
     parser.add_argument("--test", action="store_true",
                         help="Post the most recent transaction and exit")
     args = parser.parse_args()
@@ -119,7 +114,7 @@ def main():
         print("Error: --league-id or FANTRAX_LEAGUE_ID required", file=sys.stderr)
         sys.exit(1)
 
-    if not args.dry_run and not args.test and not args.once and not args.webhook_url:
+    if not args.dry_run and not args.test and not args.webhook_url:
         print("Error: --webhook-url or DISCORD_TRANSACTION_WEBHOOK_URL required", file=sys.stderr)
         sys.exit(1)
 
@@ -137,28 +132,7 @@ def main():
             print("No transactions found")
         return
 
-    # --once mode: single check and exit
-    if args.once:
-        check_once(args.league_id, args.webhook_url, args.dry_run)
-        return
-
-    # Polling loop
-    print(f"Watching for transactions (polling every {args.interval}s)...")
-    if args.dry_run:
-        print("DRY RUN mode - embeds will be printed, not posted")
-
-    try:
-        while True:
-            try:
-                check_once(args.league_id, args.webhook_url, args.dry_run)
-            except requests.RequestException as e:
-                print(f"  Network error: {e}", file=sys.stderr)
-            except Exception as e:
-                print(f"  Error: {e}", file=sys.stderr)
-
-            time.sleep(args.interval)
-    except KeyboardInterrupt:
-        print("\nStopped.")
+    check_once(args.league_id, args.webhook_url, args.dry_run)
 
 
 if __name__ == "__main__":

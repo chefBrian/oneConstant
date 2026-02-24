@@ -14,8 +14,6 @@ DIVIDER = "\u2500" * 45
 
 # Spacer fields for visual breathing room
 SPACER = {"name": "\u200b", "value": DIVIDER, "inline": False}
-SPACER_SM = {"name": "", "value": "\u200b", "inline": False}
-SPACER_INLINE = {"name": "\u200b", "value": "\u200b", "inline": True}
 
 
 FANTRAX_STATS_URL = "https://www.fantrax.com/fantasy/league/{league_id}/standings;view=SEASON_STATS"
@@ -172,19 +170,6 @@ def _all_play_fields(stats: dict) -> list[dict]:
         })
 
     return fields
-
-
-def _transactions_fields(stats: dict) -> list[dict]:
-    txns = stats.get("most_transactions", [])
-    if not txns:
-        return []
-
-    lines = [f"{t['count']} \u2013 {t['team']}" for t in txns[:5]]
-    return [{
-        "name": "\U0001f501 Most Transactions This Week:",
-        "value": "\n".join(lines),
-        "inline": False,
-    }]
 
 
 def _player_tag(player: dict) -> str:

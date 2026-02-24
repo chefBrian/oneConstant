@@ -232,14 +232,6 @@ class FantraxClient:
 
         return periods
 
-    def period_results(self, period_num: int) -> dict | None:
-        """Get results for a specific scoring period."""
-        schedule = self.schedule()
-        for p in schedule:
-            if p["period_num"] == period_num:
-                return p
-        return None
-
     def latest_completed_period(self) -> dict | None:
         """Get the most recent completed scoring period.
 
