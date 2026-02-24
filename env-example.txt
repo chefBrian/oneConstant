@@ -8,4 +8,7 @@ FIREBASE_SERVICE_ACCOUNT_BASE64=
 # Option 2: Path to service account JSON file (for local dev)
 GOOGLE_APPLICATION_CREDENTIALS=
 # Option 3: If using ADC (gcloud auth application-default login), set project ID
-GOOGLE_CLOUD_PROJECT=oneconstant
+GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+
+# Cloud Scheduler auth (shared secret header)
+SCHEDULER_SECRET=YOUR_SECRET_HERE
