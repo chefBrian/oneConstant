@@ -51,11 +51,11 @@ def _seen_ids_collection(league_id: str):
     return db.collection("leagues").document(league_id).collection("seen_ids")
 
 
-def has_any_seen_ids(league_id: str) -> bool:
-    """Check if any seen IDs exist for this league (first-run detection)."""
-    col = _seen_ids_collection(league_id)
-    docs = col.limit(1).get()
-    return len(docs) > 0
+def has_been_seeded(league_id: str) -> bool:
+    """Check if this league has been seeded (first-run detection)."""
+    db = _get_db()
+    doc = db.collection("leagues").document(league_id).get()
+    return doc.exists and doc.to_dict().get("seeded", False)
 
 
 def load_seen_ids(league_id: str, tx_set_ids: list[str]) -> set[str]:
@@ -90,10 +90,11 @@ def save_seen_ids(league_id: str, new_ids: list[str]) -> None:
 
 
 def seed_seen_ids(league_id: str, all_ids: list[str]) -> None:
-    """Bulk-write all IDs on first run (chunked into 500-op batches)."""
-    if not all_ids:
-        return
+    """Bulk-write all IDs on first run (chunked into 500-op batches).
 
+    Also marks the league document as seeded so we don't re-seed
+    even when there are 0 transactions.
+    """
     db = _get_db()
     col = _seen_ids_collection(league_id)
 
@@ -103,3 +104,8 @@ def seed_seen_ids(league_id: str, all_ids: list[str]) -> None:
         for tx_id in chunk:
             batch.set(col.document(tx_id), {"created_at": firestore.SERVER_TIMESTAMP})
         batch.commit()
+
+    # Mark league as seeded
+    db.collection("leagues").document(league_id).set(
+        {"seeded": True, "seeded_at": firestore.SERVER_TIMESTAMP}, merge=True
+    )
