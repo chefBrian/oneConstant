@@ -12,7 +12,10 @@ import json
 import os
 import sys
 
+from dotenv import load_dotenv
 import requests
+
+load_dotenv()
 
 from fantrax_client import FantraxClient
 from stats import compute_weekly_stats
@@ -38,7 +41,7 @@ def send_to_discord(webhook_url: str, embeds: list[dict]) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="oneConstant - Fantrax to Discord weekly recap")
-    parser.add_argument("--league-id", default=os.environ.get("FANTRAX_LEAGUE_ID", "s41y9u1cmlpnnwv5"),
+    parser.add_argument("--league-id", default=os.environ.get("FANTRAX_LEAGUE_ID"),
                         help="Fantrax league ID")
     parser.add_argument("--webhook-url", default=os.environ.get("DISCORD_WEBHOOK_URL"),
                         help="Discord webhook URL")
@@ -47,6 +50,10 @@ def main():
     parser.add_argument("--dry-run", action="store_true",
                         help="Print embeds to stdout instead of posting")
     args = parser.parse_args()
+
+    if not args.league_id:
+        print("Error: --league-id or FANTRAX_LEAGUE_ID env var required", file=sys.stderr)
+        sys.exit(1)
 
     if not args.dry_run and not args.webhook_url:
         print("Error: --webhook-url or DISCORD_WEBHOOK_URL env var required (unless --dry-run)", file=sys.stderr)

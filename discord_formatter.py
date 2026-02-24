@@ -9,6 +9,7 @@ MINUS = "<:minus:826596117923889152>"
 UP = "<:upchevron:1115050941834596454>"
 DOWN = "<:downchevron:1115050940681158717>"
 BLANK = "<:blank:1085633856868208640>"
+TRADE = "<:trade:826598334521147433>"
 DIVIDER = "\u2500" * 45
 
 # Spacer fields for visual breathing room
@@ -82,11 +83,12 @@ def _standings_fields(stats: dict) -> list[dict]:
         fields.append({
             "name": "",
             "value": f"{prefix} {rank}. {name} {gb_str}",
+            "inline": False,
         })
 
         # Separator between playoff (top 6) and non-playoff teams
         if i == 5:
-            fields.append({"name": "", "value": DIVIDER})
+            fields.append({"name": "", "value": DIVIDER, "inline": False})
 
     return fields
 
@@ -134,8 +136,7 @@ def _all_play_fields(stats: dict) -> list[dict]:
     def _normalize(rec):
         w = round(rec['wins'] / num_opponents)
         l = round(rec['losses'] / num_opponents)
-        total_cats = rec['wins'] + rec['losses'] + rec['ties']
-        t = round(total_cats / num_opponents) - w - l
+        t = round(rec['ties'] / num_opponents)
         net = w - l + t * 0.5
         icon = PLUS if net >= 0 else MINUS
         return f"{icon}{abs(net):g} ({w}-{l}-{t})"
@@ -184,6 +185,103 @@ def _transactions_fields(stats: dict) -> list[dict]:
         "value": "\n".join(lines),
         "inline": False,
     }]
+
+
+def _player_tag(player: dict) -> str:
+    """Format a player as 'Name (POS-MLB) 🌱🔻'."""
+    parts = []
+    if player.get("position"):
+        parts.append(player["position"])
+    if player.get("mlb_team"):
+        parts.append(player["mlb_team"])
+    tag = "-".join(parts)
+    suffix = f" ({tag})" if tag else ""
+    badges = ""
+    if player.get("rookie"):
+        badges += " \U0001f331"  # 🌱
+    if player.get("minors_eligible"):
+        badges += " \U0001f53b"  # 🔻
+    return f"{player['name']}{suffix}{badges}"
+
+
+def format_transaction_embed(txn: dict) -> dict:
+    """Format a single claim/drop transaction as a Discord embed.
+
+    txn keys: tx_set_id, team_name, date, type, claim_type, added, dropped
+    """
+    claim_label = "Waiver" if txn.get("claim_type") == "WW" else "Free Agent"
+
+    if txn["type"] == "claim_drop":
+        footer_text = f"{claim_label} Claim"
+    elif txn["type"] == "claim":
+        footer_text = f"{claim_label} Add"
+    else:
+        footer_text = "Drop"
+
+    lines = []
+    if txn.get("added"):
+        lines.append(f"{PLUS} {_player_tag(txn['added'])}")
+    if txn.get("dropped"):
+        lines.append(f"{MINUS} {_player_tag(txn['dropped'])}")
+
+    footer_parts = []
+    if txn.get("claim_type") == "WW":
+        footer_parts.append(f"\u23f0 {footer_text}")
+        if txn.get("waiver_priority"):
+            footer_parts.append(f"#{txn['waiver_priority']} Priority")
+    else:
+        footer_parts.append(footer_text)
+    footer_parts.append(txn.get("date", ""))
+
+    embed = {
+        "color": EMBED_COLOR,
+        "author": {"name": txn["team_name"]},
+        "description": "\n".join(lines),
+        "footer": {"text": "  •  ".join(footer_parts)},
+        "image": {"url": WHITESPACE_IMG},
+    }
+    headshot = (txn.get("added") or txn.get("dropped") or {}).get("headshot", "")
+    if headshot:
+        embed["thumbnail"] = {"url": headshot}
+    return embed
+
+
+def format_trade_embed(trade: dict) -> dict:
+    """Format a trade as a Discord embed.
+
+    Shows what each team gets. Draft picks display as '2026 Round 10 Pick'.
+    trade keys: tx_set_id, date, players (list with name, position, mlb_team, from_team, to_team)
+    """
+    from collections import defaultdict
+    received = defaultdict(list)
+
+    for p in trade["players"]:
+        received[p["to_team"]].append(p)
+
+    fields = []
+    for team, players in received.items():
+        # Sort: real players first, then draft picks by round number (lowest first)
+        players.sort(key=lambda p: (
+            p.get("is_draft_pick", False),
+            int(p["name"].split("Round ")[1].split(" ")[0]) if p.get("is_draft_pick") else 0,
+        ))
+        lines = []
+        for p in players:
+            icon = "\U0001f3f7\ufe0f" if p.get("is_draft_pick") else TRADE
+            lines.append(f"{icon} {_player_tag(p)}")
+        fields.append({
+            "name": f"{team} Gets:",
+            "value": "\n".join(lines),
+            "inline": True,
+        })
+
+    return {
+        "color": EMBED_COLOR,
+        "author": {"name": "Trade"},
+        "fields": fields,
+        "footer": {"text": trade.get("date", "")},
+        "image": {"url": WHITESPACE_IMG},
+    }
 
 
 def _streaks_fields(stats: dict) -> list[dict]:

@@ -292,24 +292,19 @@ def _luck_rating(standings: list[dict], schedule: list[dict], through_period: in
     luck = {}
     for s in standings:
         name = s["team_name"]
-        actual_w = s["wins"] * num_opponents
-        actual_l = s["losses"] * num_opponents
-        actual_t = s["ties"] * num_opponents
+        actual_total = s["wins"] + s["losses"] + s["ties"]
+        actual_pct = s["wins"] / max(1, actual_total)
         if name in all_play:
             ap = all_play[name]
             ap_w = ap["wins"]
             ap_l = ap["losses"]
             ap_t = ap["ties"]
-            ap_total = ap_w + ap_l + ap_t
-            actual_total = actual_w + actual_l + actual_t
-            actual_pct = actual_w / max(1, actual_total)
-            ap_pct = ap_w / max(1, ap_total)
-            games_back = round((actual_w - ap_w) / num_opponents)
-            # Normalize back to per-opponent for display
+            ap_pct = ap_w / max(1, ap_w + ap_l + ap_t)
+            # Normalize all-play categories to per-opponent matchup-equivalent record
             disp_ap_w = round(ap_w / num_opponents)
             disp_ap_l = round(ap_l / num_opponents)
-            disp_total = round(ap_total / num_opponents)
-            disp_ap_t = disp_total - disp_ap_w - disp_ap_l
+            disp_ap_t = round(ap_t / num_opponents)
+            games_back = s["wins"] - disp_ap_w
             luck[name] = {
                 "actual_pct": actual_pct,
                 "all_play_pct": ap_pct,
@@ -358,10 +353,12 @@ def _most_transactions(client: FantraxClient, period: dict) -> list[dict]:
     txns = client.transactions(count=500)
     counts = Counter()
     for t in txns:
-        if not t["date"]:
+        if not t.get("date"):
             continue
         try:
-            txn_date = datetime.strptime(t["date"].split(",")[0] + "," + t["date"].split(",")[1], "%a %b %d, %Y")
+            # Date format: "Sun Sep 28, 2025, 2:50PM" — parse just the date part
+            parts = t["date"].split(",")
+            txn_date = datetime.strptime(parts[0].strip() + "," + parts[1].strip(), "%a %b %d, %Y")
         except (ValueError, IndexError):
             continue
         if start <= txn_date <= end:
