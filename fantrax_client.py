@@ -1,6 +1,8 @@
 """Fantrax API client for H2H Categories leagues."""
 from __future__ import annotations
 
+import re
+
 import requests
 
 
@@ -133,7 +135,7 @@ class FantraxClient:
 
                 # Verify they share a matchup
                 if away_row.get("matchupId") != home_row.get("matchupId"):
-                    i += 1
+                    i += 2
                     continue
 
                 away_cell = away_row["fixedCells"][0]
@@ -180,8 +182,12 @@ class FantraxClient:
                 })
                 i += 2
 
+            # Extract period number from caption (e.g. "Scoring Period 7")
+            num_match = re.search(r"(\d+)", caption)
+            period_num = int(num_match.group(1)) if num_match else len(periods) + 1
+
             periods.append({
-                "period_num": len(periods) + 1,
+                "period_num": period_num,
                 "name": caption,
                 "date_range": sub,
                 "matchups": matchups,
@@ -217,25 +223,143 @@ class FantraxClient:
     # --- Transactions ---
 
     def transactions(self, count: int = 50) -> list[dict]:
-        """Get recent transactions."""
+        """Get recent transactions (claims/drops), grouped by txSetId.
+
+        Returns list of dicts with keys:
+            tx_set_id, team_name, date, type ("claim", "drop", "claim_drop"),
+            claim_type ("WW" or "FA"), added (player dict or None),
+            dropped (player dict or None)
+        Player dicts have: name, position
+        """
         data = self._call("getTransactionDetailsHistory", maxResultsPerPage=count)
         if "table" not in data or "rows" not in data["table"]:
             return []
 
-        txns = []
+        # Group rows by txSetId to pair claims with their drops
+        from collections import OrderedDict
+        groups: OrderedDict[str, dict] = OrderedDict()
+        # Track team/date from rows that have rowspan (parent rows)
+        last_team = "Unknown"
+        last_date = ""
+
         for row in data["table"]["rows"]:
             scorer = row.get("scorer", {})
-            cells = row.get("cells", [])
-            team_name = cells[0]["content"] if cells else "Unknown"
-            date_str = cells[3]["content"] if len(cells) > 3 else ""
-            txns.append({
-                "player_name": scorer.get("name", "Unknown"),
-                "team_name": team_name,
-                "type": row.get("transactionType", "Unknown"),
-                "claim_type": row.get("claimType", ""),
-                "date": date_str,
-            })
+            cells = {c["key"]: c for c in row.get("cells", [])}
+            tx_set_id = row.get("txSetId", "")
+            code = row.get("transactionCode", "")
+            claim_type = row.get("claimType", "")
+
+            # Extract team/date from cells if present (parent row has them)
+            if "team" in cells:
+                last_team = cells["team"]["content"]
+                last_date = cells.get("date", {}).get("content", "")
+
+            player = {
+                "name": scorer.get("name", "Unknown"),
+                "position": scorer.get("posShortNames", ""),
+                "mlb_team": scorer.get("teamShortName", ""),
+                "headshot": scorer.get("headshotUrl", ""),
+                "rookie": scorer.get("rookie", False),
+                "minors_eligible": scorer.get("minorsEligible", False),
+            }
+
+            if tx_set_id not in groups:
+                groups[tx_set_id] = {
+                    "tx_set_id": tx_set_id,
+                    "team_name": last_team,
+                    "date": last_date,
+                    "claim_type": claim_type,
+                    "added": None,
+                    "dropped": None,
+                }
+
+            group = groups[tx_set_id]
+            if code == "CLAIM":
+                group["added"] = player
+                if claim_type:
+                    group["claim_type"] = claim_type
+                priority = cells.get("priority", {}).get("content", "")
+                if priority:
+                    group["waiver_priority"] = priority
+            elif code == "DROP":
+                group["dropped"] = player
+
+        # Set type based on what happened
+        txns = []
+        for g in groups.values():
+            if g["added"] and g["dropped"]:
+                g["type"] = "claim_drop"
+            elif g["added"]:
+                g["type"] = "claim"
+            else:
+                g["type"] = "drop"
+            txns.append(g)
+
         return txns
+
+    def trades(self, count: int = 50) -> list[dict]:
+        """Get recent trades, grouped by txSetId.
+
+        Returns list of dicts with keys:
+            tx_set_id, from_team, to_team, date, players (list of player dicts)
+        Player dicts have: name, position, from_team, to_team
+        """
+        data = self._call("getTransactionDetailsHistory", maxResultsPerPage=count, view="TRADE")
+        if "table" not in data or "rows" not in data["table"]:
+            return []
+
+        from collections import OrderedDict
+        groups: OrderedDict[str, dict] = OrderedDict()
+        last_date = ""
+
+        for row in data["table"]["rows"]:
+            scorer = row.get("scorer", {})
+            cells = {c["key"]: c for c in row.get("cells", [])}
+            tx_set_id = row.get("txSetId", "")
+
+            from_team = cells.get("from", {}).get("content", "")
+            to_team = cells.get("to", {}).get("content", "")
+            if "date" in cells:
+                last_date = cells["date"]["content"]
+
+            # Check if this is a draft pick
+            draft_pick = row.get("draftPickDisplayParts")
+            if draft_pick:
+                # Parse "Round <b>10</b> (Sleepers)" and "<b>2026</b> Draft Pick"
+                round_match = re.search(r"Round\s*<b>(\d+)</b>", draft_pick.get("roundInfo", ""))
+                year_match = re.search(r"<b>(\d+)</b>", draft_pick.get("year", ""))
+                rd = round_match.group(1) if round_match else "?"
+                yr = year_match.group(1) if year_match else "?"
+                player = {
+                    "name": f"{yr} Round {rd} Pick",
+                    "position": "",
+                    "mlb_team": "",
+                    "from_team": from_team,
+                    "to_team": to_team,
+                    "is_draft_pick": True,
+                }
+            else:
+                player = {
+                    "name": scorer.get("name", "Unknown"),
+                    "position": scorer.get("posShortNames", ""),
+                    "mlb_team": scorer.get("teamShortName", ""),
+                    "from_team": from_team,
+                    "to_team": to_team,
+                    "is_draft_pick": False,
+                    "rookie": scorer.get("rookie", False),
+                    "minors_eligible": scorer.get("minorsEligible", False),
+                }
+
+            if tx_set_id not in groups:
+                groups[tx_set_id] = {
+                    "tx_set_id": tx_set_id,
+                    "date": last_date,
+                    "players": [],
+                }
+
+            groups[tx_set_id]["players"].append(player)
+
+        return list(groups.values())
 
 
 if __name__ == "__main__":
