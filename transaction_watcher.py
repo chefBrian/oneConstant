@@ -18,7 +18,7 @@ import requests
 from fantrax_client import FantraxClient
 from discord_formatter import format_transaction_embed, format_trade_embed
 from firestore_client import (
-    has_any_seen_ids,
+    has_been_seeded,
     load_seen_ids,
     save_seen_ids,
     seed_seen_ids,
@@ -53,7 +53,7 @@ def check_once(league_id: str, webhook_url: str | None, dry_run: bool) -> None:
     txns, trades = fetch_all_tx_ids(client)
 
     # First-run detection: seed Firestore with all current IDs
-    if not has_any_seen_ids(league_id):
+    if not has_been_seeded(league_id):
         all_ids = [t["tx_set_id"] for t in txns] + [t["tx_set_id"] for t in trades]
         seed_seen_ids(league_id, all_ids)
         print(f"Seeded Firestore with {len(all_ids)} existing transactions")

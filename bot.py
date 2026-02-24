@@ -12,10 +12,7 @@ import json
 import os
 import sys
 
-from dotenv import load_dotenv
 import requests
-
-load_dotenv()
 
 from fantrax_client import FantraxClient
 from stats import compute_weekly_stats
@@ -39,7 +36,34 @@ def send_to_discord(webhook_url: str, embeds: list[dict]) -> None:
             resp.raise_for_status()
 
 
+def run_recap(league_id: str, webhook_url: str, period: int | None = None, dry_run: bool = False) -> None:
+    """Run the weekly recap. Shared entry point for CLI and Cloud Functions."""
+    print(f"Fetching data for league {league_id}...")
+    client = FantraxClient(league_id)
+    print(f"League: {client.team_map and 'loaded'}")
+
+    print("Computing stats...")
+    stats = compute_weekly_stats(client, period_num=period)
+
+    if "error" in stats:
+        raise RuntimeError(stats["error"])
+
+    print(f"Period: {stats['period']['name']} {stats['period']['date_range']}")
+
+    embeds = format_weekly_recap(stats, league_id=league_id)
+
+    if dry_run:
+        print("\n--- DRY RUN: Embeds that would be posted ---\n")
+        print(json.dumps(embeds, indent=2, ensure_ascii=False))
+    else:
+        send_to_discord(webhook_url, embeds)
+        print("Done!")
+
+
 def main():
+    from dotenv import load_dotenv
+    load_dotenv()
+
     parser = argparse.ArgumentParser(description="oneConstant - Fantrax to Discord weekly recap")
     parser.add_argument("--league-id", default=os.environ.get("FANTRAX_LEAGUE_ID"),
                         help="Fantrax league ID")
@@ -59,27 +83,7 @@ def main():
         print("Error: --webhook-url or DISCORD_WEBHOOK_URL env var required (unless --dry-run)", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Fetching data for league {args.league_id}...")
-    client = FantraxClient(args.league_id)
-    print(f"League: {client.team_map and 'loaded'}")
-
-    print("Computing stats...")
-    stats = compute_weekly_stats(client, period_num=args.period)
-
-    if "error" in stats:
-        print(f"Error: {stats['error']}", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Period: {stats['period']['name']} {stats['period']['date_range']}")
-
-    embeds = format_weekly_recap(stats, league_id=args.league_id)
-
-    if args.dry_run:
-        print("\n--- DRY RUN: Embeds that would be posted ---\n")
-        print(json.dumps(embeds, indent=2, ensure_ascii=False))
-    else:
-        send_to_discord(args.webhook_url, embeds)
-        print("Done!")
+    run_recap(args.league_id, args.webhook_url, period=args.period, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
