@@ -38,6 +38,7 @@ Copy `env-example.txt` to `.env` and fill in your values:
 ```
 FANTRAX_LEAGUE_ID=your_league_id
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+DISCORD_TRANSACTION_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
 Your Fantrax league ID is in the URL when viewing your league on fantrax.com.
@@ -60,10 +61,31 @@ python bot.py --period 10
 
 The `--dry-run` flag prints the Discord embed JSON to stdout and doesn't require a webhook URL.
 
+### Transaction Watcher
+
+Polls Fantrax for new transactions (adds, drops, trades, waiver claims) and posts them to Discord in real time.
+
+```bash
+# Preview new transactions without posting
+python transaction_watcher.py --dry-run
+
+# Watch for new transactions (polls every 30s by default)
+python transaction_watcher.py
+
+# Custom poll interval
+python transaction_watcher.py --interval 60
+
+# Post the most recent transaction and exit
+python transaction_watcher.py --test
+```
+
+State is persisted in `seen_transactions.json` so previously posted transactions aren't re-sent. On first run, existing transactions are seeded automatically.
+
 ## Architecture
 
 ```
-bot.py → FantraxClient → compute_weekly_stats() → format_weekly_recap() → Discord webhook
+bot.py              → FantraxClient → compute_weekly_stats() → format_weekly_recap() → Discord webhook
+transaction_watcher → FantraxClient → format_transaction_embed() / format_trade_embed() → Discord webhook
 ```
 
 | File | Purpose |
@@ -72,6 +94,7 @@ bot.py → FantraxClient → compute_weekly_stats() → format_weekly_recap() �
 | `fantrax_client.py` | Fantrax API client (standings, schedule, transactions, trades) |
 | `stats.py` | Stat computations (all-play, luck, streaks, category kings, etc.) |
 | `discord_formatter.py` | Formats stats into Discord embed payloads |
+| `transaction_watcher.py` | Polls Fantrax for new transactions/trades, posts to Discord |
 
 ## Automated Recaps
 
@@ -80,6 +103,7 @@ A GitHub Actions workflow runs every Monday at 8:00 AM ET to post the weekly rec
 Set these repository secrets:
 - `FANTRAX_LEAGUE_ID`
 - `DISCORD_WEBHOOK_URL`
+- `DISCORD_TRANSACTION_WEBHOOK_URL` (for the transaction watcher)
 
 ## Notes
 
