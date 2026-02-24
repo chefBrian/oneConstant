@@ -91,7 +91,7 @@ transaction_watcher → FantraxClient → format_transaction_embed() / format_tr
 | `fantrax_client.py` | Fantrax API client (standings, schedule, transactions, trades) |
 | `stats.py` | Stat computations (all-play, luck, streaks, category kings, etc.) |
 | `discord_formatter.py` | Formats stats into Discord embed payloads |
-| `transaction_watcher.py` | Polls Fantrax for new transactions/trades, posts to Discord |
+| `transaction_watcher.py` | Checks Fantrax for new transactions/trades, posts to Discord |
 | `firestore_client.py` | Firestore state management for seen transaction IDs |
 | `main.py` | Cloud Functions HTTP entry points (triggered by Cloud Scheduler) |
 
