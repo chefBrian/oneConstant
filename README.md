@@ -11,8 +11,11 @@ Fantasy baseball Discord bot that pulls H2H Categories league data from [Fantrax
 - **Luck ratings** — compares actual record to expected all-play record
 - **Category sweeps** — flags teams winning 80%+ of categories in a matchup
 - **Transaction tracking** — counts adds/drops per team during each scoring period
-<img width="362" height="833" alt="CleanShot 2026-02-24 at 00 56 04" src="https://github.com/user-attachments/assets/da9db2fd-0181-4cfb-ac2b-1f577b3ddd89" />
-<img width="410" height="495" alt="CleanShot 2026-02-24 at 00 56 44" src="https://github.com/user-attachments/assets/b82852c6-c889-46cf-bc6d-509d8af083f8" />
+<div style="display: flex; align-items: flex-start; gap: 10px;">
+  <img width="362" height="833" alt="CleanShot 2026-02-24 at 00 56 04" src="https://github.com/user-attachments/assets/da9db2fd-0181-4cfb-ac2b-1f577b3ddd89" />
+  <img width="410" height="495" alt="CleanShot 2026-02-24 at 00 56 44" src="https://github.com/user-attachments/assets/b82852c6-c889-46cf-bc6d-509d8af083f8" />
+</div>
+
 ## Setup
 
 
