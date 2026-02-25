@@ -1,6 +1,6 @@
 # oneConstant
 
-Fantasy baseball Discord bot that pulls H2H Categories league data from [Fantrax](https://www.fantrax.com), computes weekly stats, and posts recaps to Discord via webhook.
+Fantasy baseball Discord bot and analysis tools - pulls H2H Categories league data from [Fantrax](https://www.fantrax.com), computes weekly stats, posts recaps to Discord via webhook, and generates keeper/roster reports and season summaries.
 
 ## Features
 
@@ -11,6 +11,8 @@ Fantasy baseball Discord bot that pulls H2H Categories league data from [Fantrax
 - **Luck ratings** - compares actual record to expected all-play record
 - **Category sweeps** - flags teams winning 80%+ of categories in a matchup
 - **Transaction tracking** - counts adds/drops per team during each scoring period
+- **Roster/keeper report** - analyzes rosters, ADP, scores, draft history, and keeper costs; outputs to Google Sheets
+- **Season report** - draft busts/steals, awards, luck stats, and waiver wire highlights
 <table>
   <tr>
     <th>Weekly Recap</th>
@@ -61,6 +63,35 @@ python bot.py --period 10
 
 The `--dry-run` flag prints the Discord embed JSON to stdout and doesn't require a webhook URL.
 
+### Roster/Keeper Report
+
+Analyzes rosters, ADP, player scores, draft history, and keeper costs. Outputs to stdout or Google Sheets.
+
+```bash
+# Pretty table to stdout
+python roster_report.py
+
+# Write to Google Sheets
+python roster_report.py --sheets
+```
+
+Requires Google Sheets auth via ADC (`gcloud auth application-default login` with Sheets scope) or `GOOGLE_APPLICATION_CREDENTIALS`.
+
+### Season Report
+
+Generates a full season summary with draft busts/steals, awards, luck stats, and waiver wire analysis.
+
+```bash
+# CLI output
+python draft_roast.py
+
+# Post as Discord embed
+python draft_roast.py --discord
+
+# Preview embed JSON without posting
+python draft_roast.py --dry-run
+```
+
 ### Transaction Watcher
 
 Checks Fantrax for new transactions (adds, drops, trades, waiver claims) and posts them to Discord. In production this runs as a Cloud Function triggered by Cloud Scheduler.
@@ -83,6 +114,8 @@ State is persisted in Firestore so previously posted transactions aren't re-sent
 ```
 bot.py              → FantraxClient → compute_weekly_stats() → format_weekly_recap() → Discord webhook
 transaction_watcher → FantraxClient → format_transaction_embed() / format_trade_embed() → Discord webhook
+roster_report.py    → FantraxClient → Google Sheets
+draft_roast.py      → FantraxClient → CLI / Discord webhook
 ```
 
 | File | Purpose |
@@ -93,6 +126,8 @@ transaction_watcher → FantraxClient → format_transaction_embed() / format_tr
 | `discord_formatter.py` | Formats stats into Discord embed payloads |
 | `transaction_watcher.py` | Checks Fantrax for new transactions/trades, posts to Discord |
 | `firestore_client.py` | Firestore state management for seen transaction IDs |
+| `roster_report.py` | Keeper/roster analysis - rosters, ADP, scores, draft history, keeper costs |
+| `draft_roast.py` | 2025 season report - draft busts/steals, awards, luck stats |
 | `main.py` | Cloud Functions HTTP entry points (triggered by Cloud Scheduler) |
 
 ## Cloud Functions
