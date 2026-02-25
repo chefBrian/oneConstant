@@ -390,6 +390,45 @@ class FantraxClient:
 
         return list(groups.values())
 
+    # --- Draft Results ---
+
+    def draft_results(self) -> list[dict]:
+        """Get draft results with full pick data.
+
+        Returns list of dicts with keys:
+            scorer_id, player_name, position, mlb_team, team_id, team_name,
+            round, pick, overall_pick
+        """
+        data = self._call("getDraftResults")
+        picks = data.get("draftPicksOrdered", [])
+        scorers = data.get("scorers", [])
+        teams = {t["id"]: t["name"] for t in data.get("fantasyTeamsOrdered", [])}
+
+        # Build scorer lookup by scorerId
+        scorer_map = {s["scorerId"]: s for s in scorers if "scorerId" in s}
+
+        results = []
+        for pick in picks:
+            sid = pick.get("scorerId")
+            if not sid:
+                continue
+            tid = pick.get("teamId", "")
+            scorer = scorer_map.get(sid, {})
+            num_teams = len(teams) or 12
+            overall = (pick["round"] - 1) * num_teams + pick["pickNumber"]
+            results.append({
+                "scorer_id": sid,
+                "player_name": scorer.get("name", "Unknown"),
+                "position": scorer.get("posShortNames", ""),
+                "mlb_team": scorer.get("teamShortName", ""),
+                "team_id": tid,
+                "team_name": teams.get(tid, self.team_name(tid)),
+                "round": pick["round"],
+                "pick": pick["pickNumber"],
+                "overall_pick": overall,
+            })
+        return results
+
 
 if __name__ == "__main__":
     client = FantraxClient("uo0es7lom23shg6b")
