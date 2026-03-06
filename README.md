@@ -12,7 +12,7 @@ Fantasy baseball Discord bot and analysis tools - pulls H2H Categories league da
 - **Category sweeps** - flags teams winning 80%+ of categories in a matchup
 - **Transaction tracking** - counts adds/drops per team during each scoring period
 - **Roster/keeper report** - analyzes rosters, ADP, scores, draft history, and keeper costs; outputs to Google Sheets
-- **Season report** - draft busts/steals, awards, luck stats, and waiver wire highlights
+- **Season report** - final standings, playoff results, season streaks, biggest blowout, draft analysis, waiver wire, and luck stats
 <table>
   <tr>
     <th>Weekly Recap</th>
@@ -79,17 +79,17 @@ Requires Google Sheets auth via ADC (`gcloud auth application-default login` wit
 
 ### Season Report
 
-Generates a full season summary with draft busts/steals, awards, luck stats, and waiver wire analysis.
+Generates a full season summary with final standings, playoff results, season streaks, biggest blowout, draft analysis, waiver wire highlights, and luck stats.
 
 ```bash
 # CLI output
-python draft_roast.py
+python season_report.py
 
 # Post as Discord embed
-python draft_roast.py --discord
+python season_report.py --discord
 
 # Preview embed JSON without posting
-python draft_roast.py --dry-run
+python season_report.py --dry-run
 ```
 
 ### Transaction Watcher
@@ -115,7 +115,7 @@ State is persisted in Firestore so previously posted transactions aren't re-sent
 bot.py              → FantraxClient → compute_weekly_stats() → format_weekly_recap() → Discord webhook
 transaction_watcher → FantraxClient → format_transaction_embed() / format_trade_embed() → Discord webhook
 roster_report.py    → FantraxClient → Google Sheets
-draft_roast.py      → FantraxClient → CLI / Discord webhook
+season_report.py    → FantraxClient → CLI / Discord webhook
 ```
 
 | File | Purpose |
@@ -127,7 +127,7 @@ draft_roast.py      → FantraxClient → CLI / Discord webhook
 | `transaction_watcher.py` | Checks Fantrax for new transactions/trades, posts to Discord |
 | `firestore_client.py` | Firestore state management for seen transaction IDs |
 | `roster_report.py` | Keeper/roster analysis - rosters, ADP, scores, draft history, keeper costs |
-| `draft_roast.py` | 2025 season report - draft busts/steals, awards, luck stats |
+| `season_report.py` | Season report - standings, streaks, draft analysis, awards, luck stats |
 | `main.py` | Cloud Functions HTTP entry points (triggered by Cloud Scheduler) |
 
 ## Cloud Functions

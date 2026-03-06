@@ -158,14 +158,14 @@ def _all_play_fields(stats: dict) -> list[dict]:
         name, data = luck["luckiest"]
         fields.append({
             "name": "\U0001f340 Luckiest:",
-            "value": f"{name}\nActual: {data['actual_record']} ({data['actual_pct']:.3f})\nShould Be: {data['all_play_record']} ({data['all_play_pct']:.3f})\nDiff: +{data['games_back']} games",
+            "value": f"{name}\nActual: {data['actual_record']}\nVs Avg: {data['expected_record']}\nDiff: {data['games_back']:+d} games",
             "inline": True,
         })
     if luck.get("unluckiest"):
         name, data = luck["unluckiest"]
         fields.append({
             "name": "\U0001f622 Unluckiest:",
-            "value": f"{name}\nActual: {data['actual_record']} ({data['actual_pct']:.3f})\nShould Be: {data['all_play_record']} ({data['all_play_pct']:.3f})\nDiff: {data['games_back']} games",
+            "value": f"{name}\nActual: {data['actual_record']}\nVs Avg: {data['expected_record']}\nDiff: {data['games_back']:+d} games",
             "inline": True,
         })
 
