@@ -43,7 +43,7 @@ def compute_weekly_stats(client: FantraxClient, period_num: int | None = None) -
         "all_play_record": _all_play_record(schedule, period["period_num"]),
         "weekly_all_play": _weekly_all_play(period),
         "streaks": _streaks(schedule, period["period_num"]),
-        "luckiest_unluckiest": _luck_rating(standings, schedule, period["period_num"]),
+        "luckiest_unluckiest": _luck_rating(period),
         "category_sweeps": _category_sweeps(period),
         "most_transactions": _most_transactions_from_data(txns, period),
     }
@@ -317,12 +317,12 @@ def _all_play_matchup_record(schedule: list[dict], through_period: int) -> dict[
     return dict(records)
 
 
-def _vs_avg_record(schedule: list[dict], through_period: int) -> dict[str, dict]:
-    """Calculate each team's record if they played the league average each week.
+def _vs_avg_category_record(schedule: list[dict], through_period: int) -> dict[str, dict]:
+    """Calculate each team's category-level record vs league average across weeks.
 
     For each week, compute the average category value across all teams, then
-    simulate each team's H2H matchup against that average. Returns a record
-    directly comparable to actual standings (one result per week).
+    count individual category wins/losses/ties for each team vs that average.
+    Returns accumulated category W-L-T comparable to actual matchup category records.
     """
     records = defaultdict(lambda: {"wins": 0, "losses": 0, "ties": 0})
 
@@ -345,35 +345,56 @@ def _vs_avg_record(schedule: list[dict], through_period: int) -> dict[str, dict]
             avg_cats[cat] = sum(vals) / max(1, len(vals))
 
         for team in teams:
-            cat_w, cat_l, _cat_t = _simulate_h2h(team_cats[team], avg_cats)
-            if cat_w > cat_l:
-                records[team]["wins"] += 1
-            elif cat_l > cat_w:
-                records[team]["losses"] += 1
-            else:
-                records[team]["ties"] += 1
+            cat_w, cat_l, cat_t = _simulate_h2h(team_cats[team], avg_cats)
+            records[team]["wins"] += cat_w
+            records[team]["losses"] += cat_l
+            records[team]["ties"] += cat_t
 
     return dict(records)
 
 
-def _luck_rating(standings: list[dict], schedule: list[dict], through_period: int) -> dict:
-    """Find luckiest and unluckiest teams based on actual record vs expected record."""
-    vs_avg = _vs_avg_record(schedule, through_period)
+def _luck_rating(period: dict) -> dict:
+    """Find luckiest and unluckiest teams for a single week.
+
+    Compares each team's actual category record from their matchup against
+    what their record would be vs the league average that week.
+    """
+    # Actual category W-L-T from matchups
+    actual = {}
+    for m in period["matchups"]:
+        if m["away_wins"] + m["away_losses"] + m["away_ties"] == 0:
+            continue
+        for side in ("away", "home"):
+            actual[m[f"{side}_team_name"]] = {
+                "wins": m[f"{side}_wins"],
+                "losses": m[f"{side}_losses"],
+                "ties": m[f"{side}_ties"],
+            }
+
+    # Expected category W-L-T vs league average
+    team_cats = _collect_team_cats(period)
+    teams = list(team_cats.keys())
+    if not teams:
+        return {"luckiest": None, "unluckiest": None}
+
+    all_cats = list(team_cats[teams[0]].keys())
+    avg_cats = {}
+    for cat in all_cats:
+        vals = [team_cats[t][cat] for t in teams if team_cats[t][cat] != float("inf")]
+        avg_cats[cat] = sum(vals) / max(1, len(vals))
 
     luck = {}
-    for s in standings:
-        name = s["team_name"]
-        if name in vs_avg:
-            va = vs_avg[name]
-            expected_w = va["wins"]
-            expected_l = va["losses"]
-            expected_t = va["ties"]
-            games_back = s["wins"] - expected_w
-            luck[name] = {
-                "games_back": games_back,
-                "actual_record": f"{s['wins']}-{s['losses']}-{s['ties']}",
-                "expected_record": f"{expected_w}-{expected_l}-{expected_t}",
-            }
+    for team in teams:
+        if team not in actual:
+            continue
+        cat_w, cat_l, cat_t = _simulate_h2h(team_cats[team], avg_cats)
+        a = actual[team]
+        diff = a["wins"] - cat_w
+        luck[team] = {
+            "games_back": diff,
+            "actual_record": f"{a['wins']}-{a['losses']}-{a['ties']}",
+            "expected_record": f"{cat_w}-{cat_l}-{cat_t}",
+        }
 
     sorted_luck = sorted(luck.items(), key=lambda x: x[1]["games_back"], reverse=True)
     return {

@@ -120,52 +120,24 @@ def _hot_takes_fields(stats: dict) -> list[dict]:
 
 
 def _all_play_fields(stats: dict) -> list[dict]:
-    weekly_ap = stats.get("weekly_all_play", {})
     luck = stats.get("luckiest_unluckiest", {})
 
-    if not weekly_ap:
-        return []
-
-    teams = list(weekly_ap.items())
-    best_name, best_rec = teams[0]
-    worst_name, worst_rec = teams[-1]
-    num_opponents = max(1, len(weekly_ap) - 1)
-
-    def _normalize(rec):
-        w = round(rec['wins'] / num_opponents)
-        l = round(rec['losses'] / num_opponents)
-        t = round(rec['ties'] / num_opponents)
-        net = w - l + t * 0.5
-        icon = PLUS if net >= 0 else MINUS
-        return f"{icon}{abs(net):g} ({w}-{l}-{t})"
-
     fields = []
-    fields.append({
-        "name": "\U0001f525 Best vs. The Field:",
-        "value": f"{best_name}\n{_normalize(best_rec)}",
-        "inline": True,
-    })
-    fields.append({
-        "name": "\U0001f4a9 Worst vs. The Field:",
-        "value": f"{worst_name}\n{_normalize(worst_rec)}",
-        "inline": True,
-    })
-
-    if luck.get("luckiest") or luck.get("unluckiest"):
-        fields.append(SPACER)
 
     if luck.get("luckiest"):
         name, data = luck["luckiest"]
+        icon = PLUS if data["games_back"] >= 0 else MINUS
         fields.append({
             "name": "\U0001f340 Luckiest:",
-            "value": f"{name}\nActual: {data['actual_record']}\nVs Avg: {data['expected_record']}\nDiff: {data['games_back']:+d} games",
+            "value": f"{name}\nActual: {data['actual_record']}\nVs Avg: {data['expected_record']}\n{icon}{abs(data['games_back'])} categories",
             "inline": True,
         })
     if luck.get("unluckiest"):
         name, data = luck["unluckiest"]
+        icon = PLUS if data["games_back"] >= 0 else MINUS
         fields.append({
             "name": "\U0001f622 Unluckiest:",
-            "value": f"{name}\nActual: {data['actual_record']}\nVs Avg: {data['expected_record']}\nDiff: {data['games_back']:+d} games",
+            "value": f"{name}\nActual: {data['actual_record']}\nVs Avg: {data['expected_record']}\n{icon}{abs(data['games_back'])} categories",
             "inline": True,
         })
 

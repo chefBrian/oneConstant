@@ -104,9 +104,9 @@ class FantraxClient:
             rank, team_id, team_name, wins, losses, ties, win_pct,
             games_back, cat_points_for, cat_points_against
         """
-        kwargs = {}
+        kwargs = {"view": "STANDINGS"}
         if period is not None:
-            kwargs = {"period": period, "timeframeType": "BY_PERIOD", "timeStartType": "FROM_SEASON_START"}
+            kwargs.update({"period": period, "timeframeType": "BY_PERIOD", "timeStartType": "FROM_SEASON_START"})
         data = self._call("getStandings", **kwargs)
         return self._parse_standings(data)
 

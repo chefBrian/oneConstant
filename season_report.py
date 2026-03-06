@@ -155,14 +155,24 @@ def fetch_schedule_data(client: FantraxClient) -> dict:
         reverse=True,
     )
 
-    # --- Luck ---
-    from stats import _vs_avg_record
-    vs_avg = _vs_avg_record(reg_season, last_period)
+    # --- Luck (category-level: actual cat W-L-T vs expected cat W-L-T vs league avg) ---
+    from stats import _vs_avg_category_record
+    vs_avg_cats = _vs_avg_category_record(reg_season, last_period)
+
+    # Accumulate actual category W-L-T from matchups
+    actual_cat_records: dict[str, dict] = defaultdict(lambda: {"wins": 0, "losses": 0, "ties": 0})
+    for period in reg_season:
+        for m in period["matchups"]:
+            for side in ("away", "home"):
+                name = m[f"{side}_team_name"]
+                actual_cat_records[name]["wins"] += m[f"{side}_wins"]
+                actual_cat_records[name]["losses"] += m[f"{side}_losses"]
+                actual_cat_records[name]["ties"] += m[f"{side}_ties"]
 
     luck = {}
-    for name, rec in actual_records.items():
-        if name in vs_avg:
-            games_back = rec["wins"] - vs_avg[name]["wins"]
+    for name, rec in actual_cat_records.items():
+        if name in vs_avg_cats:
+            games_back = rec["wins"] - vs_avg_cats[name]["wins"]
             luck[name] = games_back
 
     sorted_luck = sorted(luck.items(), key=lambda x: x[1], reverse=True)
