@@ -636,10 +636,10 @@ def _build_report(analysis: dict, markdown: bool = False) -> str:
     luck_group = []
     lucky = analysis.get("luckiest")
     if lucky:
-        luck_group.append(("\U0001f340", "Luckiest Team", f"{lucky[0]}\n{lucky[1]:+d} wins above expected"))
+        luck_group.append(("\U0001f340", "Luckiest Team", f"{lucky[0]}: {lucky[1]:+d} wins above expected"))
     unlucky = analysis.get("unluckiest")
     if unlucky:
-        luck_group.append(("\U0001f622", "Unluckiest Team", f"{unlucky[0]}\n{unlucky[1]:+d} wins below expected"))
+        luck_group.append(("\U0001f622", "Unluckiest Team", f"{unlucky[0]}: {unlucky[1]:+d} wins below expected"))
     if luck_group:
         _awards(luck_group)
 
@@ -746,10 +746,10 @@ def format_discord_embeds(analysis: dict) -> list[dict]:
     waiver_awards = []
     bw = analysis.get("best_waiver")
     if bw:
-        waiver_awards.append(("\U0001f48e", "Best Pickup", f"{bw['team']}\n{bw['name']} (ranked #{bw['rank']})"))
+        waiver_awards.append(("\U0001f48e", "Best Pickup", f"{bw['team']} - {bw['name']} (ranked #{bw['rank']})"))
     wm = analysis.get("most_waiver_moves")
     if wm:
-        waiver_awards.append(("\U0001f504", "Most Pickups", f"{wm[0]}\n{wm[1]} adds"))
+        waiver_awards.append(("\U0001f504", "Most Pickups", f"{wm[0]} - {wm[1]} adds"))
     if waiver_awards:
         fields.extend(_embed_award_fields(waiver_awards))
 
@@ -774,10 +774,10 @@ def format_discord_embeds(analysis: dict) -> list[dict]:
     luck_awards = []
     lucky = analysis.get("luckiest")
     if lucky:
-        luck_awards.append(("\U0001f340", "Luckiest Team", f"{lucky[0]}\n{lucky[1]:+d} wins above expected"))
+        luck_awards.append(("\U0001f340", "Luckiest Team", f"{lucky[0]}: {lucky[1]:+d} wins above expected"))
     unlucky = analysis.get("unluckiest")
     if unlucky:
-        luck_awards.append(("\U0001f622", "Unluckiest Team", f"{unlucky[0]}\n{unlucky[1]:+d} wins below expected"))
+        luck_awards.append(("\U0001f622", "Unluckiest Team", f"{unlucky[0]}: {unlucky[1]:+d} wins below expected"))
     if luck_awards:
         fields.extend(_embed_award_fields(luck_awards))
 
