@@ -19,7 +19,7 @@ Fantasy baseball Discord bot and analysis tools - pulls H2H Categories league da
     <th>Transactions</th>
   </tr>
   <tr>
-    <td valign="top"><img width="362" alt="Weekly Recap" src="https://github.com/user-attachments/assets/da9db2fd-0181-4cfb-ac2b-1f577b3ddd89" /></td>
+    <td valign="top"><img width="351" height="723" alt="Weekly Recap" src="https://github.com/user-attachments/assets/804e2064-db8a-49aa-a24e-b8c36de2dec4" /></td>
     <td valign="top"><img width="410" alt="Transactions" src="https://github.com/user-attachments/assets/b82852c6-c889-46cf-bc6d-509d8af083f8" /></td>
   </tr>
 </table>
