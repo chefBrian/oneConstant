@@ -214,7 +214,7 @@ def main():
 
         # Projected draft round from ADP (12-team league)
         try:
-            proj_round = int(float(p["adp"]) // 12) + 1 if p["adp"] else ""
+            proj_round = (int(float(p["adp"])) - 1) // 12 + 1 if p["adp"] else ""
         except ValueError:
             proj_round = ""
 
@@ -245,10 +245,10 @@ def main():
             kr = int(keeper_rnd_2026)
             pr = int(proj_round)
             surplus = kr - pr
-            talent_weight = (22 - pr) ** 1.5
+            talent_weight = (22 - pr) ** 2
             keeper_value = round(surplus * talent_weight, 1) if surplus > 0 else 0
         except (ValueError, TypeError):
-            keeper_value = ""
+            keeper_value = 0
 
         rows.append({
             "Fantasy Team": p["team_name"],
@@ -262,13 +262,14 @@ def main():
             "Keeper Value": keeper_value,
         })
 
-    # Sort by team name, then ADP
+    # Sort by team name, then N/A keepers last, then keeper value (best to worst)
     def sort_key(r):
+        is_na = 1 if r["2026 Keeper Rnd"] == "N/A" else 0
         try:
-            adp = float(r["2026 ADP"]) if r["2026 ADP"] else 9999
-        except ValueError:
-            adp = 9999
-        return (r["Fantasy Team"], adp)
+            val = float(r["Keeper Value"]) if r["Keeper Value"] else -1
+        except (ValueError, TypeError):
+            val = -1
+        return (r["Fantasy Team"], is_na, -val)
 
     rows.sort(key=sort_key)
 
