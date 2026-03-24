@@ -17,6 +17,7 @@ import requests
 
 from clients.fantrax_client import FantraxClient
 from utils.discord_formatter import format_transaction_embed, format_trade_embed
+from utils.mlb_lookup import enrich_mlb_ids
 from clients.firestore_client import (
     has_been_seeded,
     load_seen_ids,
@@ -87,7 +88,8 @@ def check_once(league_id: str, webhook_url: str | None, dry_run: bool) -> None:
     successfully_posted = []
 
     for txn in reversed(new_txns):
-        embed = format_transaction_embed(txn)
+        enrich_mlb_ids(txn)
+        embed = format_transaction_embed(txn, league_id)
         print(f"  NEW: {txn['team_name']} ({txn['type']})")
 
         if dry_run:
@@ -100,7 +102,7 @@ def check_once(league_id: str, webhook_url: str | None, dry_run: bool) -> None:
                 successfully_posted.append(txn["tx_set_id"])
 
     for trade in reversed(new_trades):
-        embed = format_trade_embed(trade)
+        embed = format_trade_embed(trade, league_id)
         player_names = [p["name"] for p in trade["players"]]
         print(f"  NEW TRADE: {', '.join(player_names[:4])}...")
 
@@ -140,7 +142,8 @@ def main():
         client = FantraxClient(args.league_id)
         txns = client.transactions(count=5)
         if txns:
-            embed = format_transaction_embed(txns[0])
+            enrich_mlb_ids(txns[0])
+            embed = format_transaction_embed(txns[0], args.league_id)
             logos = client.team_logos
             team = txns[0]["team_name"]
             print("Most recent transaction:")

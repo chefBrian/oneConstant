@@ -300,6 +300,8 @@ class FantraxClient:
 
             player = {
                 "name": scorer.get("name", "Unknown"),
+                "scorer_id": scorer.get("scorerId", ""),
+                "url_name": scorer.get("urlName", ""),
                 "position": scorer.get("posShortNames", ""),
                 "mlb_team": scorer.get("teamShortName", ""),
                 "headshot": scorer.get("headshotUrl", ""),

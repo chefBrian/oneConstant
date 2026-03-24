@@ -161,39 +161,56 @@ def _player_tag(player: dict) -> str:
     return f"{player['name']}{suffix}{badges}"
 
 
-def format_transaction_embed(txn: dict) -> dict:
+def _player_links(player: dict, league_id: str = "") -> str:
+    """Return markdown links to Fantrax, Baseball Reference, and Statcast."""
+    from urllib.parse import quote_plus
+    name = player.get("name", "")
+    if not name:
+        return ""
+
+    links = []
+
+    if league_id:
+        from urllib.parse import quote
+        q_name = quote(name)
+        fantrax = f"https://www.fantrax.com/fantasy/league/{league_id}/players;searchName={q_name};miscDisplayType=1;statusOrTeamFilter=ALL;positionOrGroup=ALL;pageNumber=1"
+        links.append(f"[Fantrax](<{fantrax}>)")
+
+    url_name = player.get("url_name", "")
+    mlb_id = player.get("mlb_id")
+    if mlb_id:
+        bref = f"https://www.baseball-reference.com/redirect.fcgi?player=1&mlb_ID={mlb_id}"
+    else:
+        q = quote_plus(name)
+        bref = f"https://www.baseball-reference.com/search/search.fcgi?search={q}"
+    links.append(f"[BBRef]({bref})")
+
+    if url_name and mlb_id:
+        savant = f"https://baseballsavant.mlb.com/savant-player/{url_name}-{mlb_id}"
+        links.append(f"[Statcast]({savant})")
+
+    return "  ·  ".join(links)
+
+
+def format_transaction_embed(txn: dict, league_id: str = "") -> dict:
     """Format a single claim/drop transaction as a Discord embed.
 
     txn keys: tx_set_id, team_name, date, type, claim_type, added, dropped
     """
-    claim_label = "Waiver" if txn.get("claim_type") == "WW" else "Free Agent"
-
-    if txn["type"] == "claim_drop":
-        footer_text = f"{claim_label} Claim"
-    elif txn["type"] == "claim":
-        footer_text = f"{claim_label} Add"
-    else:
-        footer_text = "Drop"
-
+    # Players first
     lines = []
     if txn.get("added"):
         lines.append(f"{PLUS} {_player_tag(txn['added'])}")
+        lines.append(_player_links(txn["added"], league_id))
+    if txn.get("added") and txn.get("dropped"):
+        lines.append("")
     if txn.get("dropped"):
         lines.append(f"{MINUS} {_player_tag(txn['dropped'])}")
-
-    footer_parts = []
-    if txn.get("claim_type") == "WW":
-        footer_parts.append(f"\u23f0 {footer_text}")
-        if txn.get("waiver_priority"):
-            footer_parts.append(f"#{txn['waiver_priority']} Priority")
-    else:
-        footer_parts.append(footer_text)
-    footer_parts.append(txn.get("date", ""))
+        lines.append(_player_links(txn["dropped"], league_id))
 
     embed = {
         "color": EMBED_COLOR,
         "description": "\n".join(lines),
-        "footer": {"text": "  •  ".join(footer_parts)},
         "image": {"url": WHITESPACE_IMG},
     }
     headshot = (txn.get("added") or txn.get("dropped") or {}).get("headshot", "")
@@ -202,7 +219,7 @@ def format_transaction_embed(txn: dict) -> dict:
     return embed
 
 
-def format_trade_embed(trade: dict) -> dict:
+def format_trade_embed(trade: dict, league_id: str = "") -> dict:
     """Format a trade as a Discord embed.
 
     Shows what each team gets. Draft picks display as '2026 Round 10 Pick'.
@@ -225,6 +242,8 @@ def format_trade_embed(trade: dict) -> dict:
         for p in players:
             icon = "\U0001f3f7\ufe0f" if p.get("is_draft_pick") else TRADE
             lines.append(f"{icon} {_player_tag(p)}")
+            if not p.get("is_draft_pick"):
+                lines.append(_player_links(p, league_id))
         fields.append({
             "name": f"{team} Gets:",
             "value": "\n".join(lines),
