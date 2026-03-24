@@ -16,6 +16,7 @@ class FantraxClient:
         self.league_id = league_id
         self.session = requests.Session()
         self._team_map = None  # team_id -> team_name
+        self._team_logos = None  # team_name -> logo URL
         self._categories = None  # list of category dicts from header
 
     def _call(self, method: str, **kwargs) -> dict:
@@ -61,6 +62,19 @@ class FantraxClient:
 
     def team_name(self, team_id: str) -> str:
         return self.team_map.get(team_id, team_id)
+
+    @property
+    def team_logos(self) -> dict[str, str]:
+        """Map of team_name -> logo URL."""
+        if self._team_logos is None:
+            data = self._call("getStandings")
+            self._team_logos = {}
+            for info in data.get("fantasyTeamInfo", {}).values():
+                name = info.get("name", "")
+                logo = info.get("logoUrl512", "")
+                if name and logo:
+                    self._team_logos[name] = logo
+        return self._team_logos
 
     # --- Batch fetching ---
 

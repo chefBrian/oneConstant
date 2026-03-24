@@ -192,7 +192,6 @@ def format_transaction_embed(txn: dict) -> dict:
 
     embed = {
         "color": EMBED_COLOR,
-        "author": {"name": txn["team_name"]},
         "description": "\n".join(lines),
         "footer": {"text": "  •  ".join(footer_parts)},
         "image": {"url": WHITESPACE_IMG},

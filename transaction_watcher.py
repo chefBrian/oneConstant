@@ -22,9 +22,19 @@ from firestore_client import (
 )
 
 
-def send_embed(webhook_url: str, embed: dict) -> bool:
+def send_embed(
+    webhook_url: str,
+    embed: dict,
+    username: str | None = None,
+    avatar_url: str | None = None,
+) -> bool:
     """Send a single embed to Discord. Returns True on success."""
-    resp = requests.post(webhook_url, json={"embeds": [embed]})
+    payload: dict = {"embeds": [embed]}
+    if username:
+        payload["username"] = username
+    if avatar_url:
+        payload["avatar_url"] = avatar_url
+    resp = requests.post(webhook_url, json=payload)
     if resp.status_code == 204:
         print(f"  Posted to Discord")
         return True
@@ -66,6 +76,9 @@ def check_once(league_id: str, webhook_url: str | None, dry_run: bool) -> None:
     if not new_txns and not new_trades:
         return
 
+    # Fetch team logos for webhook avatars
+    logos = client.team_logos
+
     # Post newest last (reverse since API returns newest first)
     # Only save IDs for transactions that were successfully posted
     successfully_posted = []
@@ -79,7 +92,8 @@ def check_once(league_id: str, webhook_url: str | None, dry_run: bool) -> None:
             print()
             successfully_posted.append(txn["tx_set_id"])
         elif webhook_url:
-            if send_embed(webhook_url, embed):
+            if send_embed(webhook_url, embed, username=txn["team_name"],
+                          avatar_url=logos.get(txn["team_name"])):
                 successfully_posted.append(txn["tx_set_id"])
 
     for trade in reversed(new_trades):
@@ -124,10 +138,13 @@ def main():
         txns = client.transactions(count=5)
         if txns:
             embed = format_transaction_embed(txns[0])
+            logos = client.team_logos
+            team = txns[0]["team_name"]
             print("Most recent transaction:")
             print(json.dumps(embed, indent=2, ensure_ascii=False))
             if not args.dry_run and args.webhook_url:
-                send_embed(args.webhook_url, embed)
+                send_embed(args.webhook_url, embed, username=team,
+                           avatar_url=logos.get(team))
         else:
             print("No transactions found")
         return
