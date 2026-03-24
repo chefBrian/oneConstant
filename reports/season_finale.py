@@ -16,13 +16,16 @@ import sys
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fantrax_client import FantraxClient
-from stats import LOWER_IS_BETTER
+from clients.fantrax_client import FantraxClient
+from utils.stats import LOWER_IS_BETTER
 
 LEAGUE_ID = os.environ.get("FANTRAX_LEAGUE_ID", "uo0es7lom23shg6b")
 

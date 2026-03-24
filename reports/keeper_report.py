@@ -11,12 +11,15 @@ import argparse
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fantrax_client import FantraxClient
+from clients.fantrax_client import FantraxClient
 
 SPREADSHEET_ID = "1EQrueJkYowhMbgkDfHmy7KJd2CeIkLn9vRI7sIkQC9g"
 

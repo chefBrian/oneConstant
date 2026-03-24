@@ -11,12 +11,15 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import requests
 
-from fantrax_client import FantraxClient
-from stats import compute_weekly_stats
-from discord_formatter import format_weekly_recap
+from clients.fantrax_client import FantraxClient
+from utils.stats import compute_weekly_stats
+from utils.discord_formatter import format_weekly_recap
 
 
 def send_to_discord(webhook_url: str, embeds: list[dict]) -> None:

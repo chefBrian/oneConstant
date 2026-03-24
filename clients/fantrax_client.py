@@ -440,6 +440,7 @@ class FantraxClient:
                 "round": pick["round"],
                 "pick": pick["pickNumber"],
                 "overall_pick": overall,
+                "keeper": pick.get("type") == "1",
             })
         return results
 

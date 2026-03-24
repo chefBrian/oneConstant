@@ -10,8 +10,8 @@ import os
 
 import functions_framework
 
-from transaction_watcher import check_once
-from bot import run_recap
+from services.transaction_watcher import check_once
+from services.weekly_recap import run_recap
 
 
 def _verify_scheduler(request) -> bool:

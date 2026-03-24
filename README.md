@@ -49,47 +49,47 @@ Your Fantrax league ID is in the URL when viewing your league on fantrax.com.
 
 ```bash
 # Preview embeds without posting to Discord
-python bot.py --dry-run
+python services/weekly_recap.py --dry-run
 
 # Preview a specific scoring period
-python bot.py --dry-run --period 10
+python services/weekly_recap.py --dry-run --period 10
 
 # Post the latest completed period to Discord
-python bot.py
+python services/weekly_recap.py
 
 # Post a specific period
-python bot.py --period 10
+python services/weekly_recap.py --period 10
 ```
 
 The `--dry-run` flag prints the Discord embed JSON to stdout and doesn't require a webhook URL.
 
-### Roster/Keeper Report
+### Keeper Report
 
 Analyzes rosters, ADP, player scores, draft history, and keeper costs. Outputs to stdout or Google Sheets.
 
 ```bash
 # Pretty table to stdout
-python roster_report.py
+python reports/keeper_report.py
 
 # Write to Google Sheets
-python roster_report.py --sheets
+python reports/keeper_report.py --sheets
 ```
 
 Requires Google Sheets auth via ADC (`gcloud auth application-default login` with Sheets scope) or `GOOGLE_APPLICATION_CREDENTIALS`.
 
-### Season Report
+### Season Finale
 
 Generates a full season summary with final standings, playoff results, season streaks, biggest blowout, draft analysis, waiver wire highlights, and luck stats.
 
 ```bash
 # CLI output
-python season_report.py
+python reports/season_finale.py
 
 # Post as Discord embed
-python season_report.py --discord
+python reports/season_finale.py --discord
 
 # Preview embed JSON without posting
-python season_report.py --dry-run
+python reports/season_finale.py --dry-run
 ```
 
 ### Transaction Watcher
@@ -98,13 +98,13 @@ Checks Fantrax for new transactions (adds, drops, trades, waiver claims) and pos
 
 ```bash
 # Check for new transactions and post to Discord
-python transaction_watcher.py
+python services/transaction_watcher.py
 
 # Preview without posting
-python transaction_watcher.py --dry-run
+python services/transaction_watcher.py --dry-run
 
 # Post the most recent transaction and exit
-python transaction_watcher.py --test
+python services/transaction_watcher.py --test
 ```
 
 State is persisted in Firestore so previously posted transactions aren't re-sent. On first run, existing transactions are seeded automatically.
@@ -112,23 +112,25 @@ State is persisted in Firestore so previously posted transactions aren't re-sent
 ## Architecture
 
 ```
-bot.py              → FantraxClient → compute_weekly_stats() → format_weekly_recap() → Discord webhook
-transaction_watcher → FantraxClient → format_transaction_embed() / format_trade_embed() → Discord webhook
-roster_report.py    → FantraxClient → Google Sheets
-season_report.py    → FantraxClient → CLI / Discord webhook
+services/weekly_recap.py       → FantraxClient → compute_weekly_stats() → format_weekly_recap() → Discord webhook
+services/transaction_watcher   → FantraxClient → format_transaction_embed() / format_trade_embed() → Discord webhook
+reports/keeper_report.py       → FantraxClient → Google Sheets
+reports/season_finale.py       → FantraxClient → CLI / Discord webhook
+reports/draft_report.py        → FantraxClient → CLI / Discord webhook
 ```
 
 | File | Purpose |
 |------|---------|
-| `bot.py` | CLI entrypoint, Discord webhook posting |
-| `fantrax_client.py` | Fantrax API client (standings, schedule, transactions, trades) |
-| `stats.py` | Stat computations (all-play, luck, streaks, category kings, etc.) |
-| `discord_formatter.py` | Formats stats into Discord embed payloads |
-| `transaction_watcher.py` | Checks Fantrax for new transactions/trades, posts to Discord |
-| `firestore_client.py` | Firestore state management for seen transaction IDs |
-| `roster_report.py` | Keeper/roster analysis - rosters, ADP, scores, draft history, keeper costs |
-| `season_report.py` | Season report - standings, streaks, draft analysis, awards, luck stats |
 | `main.py` | Cloud Functions HTTP entry points (triggered by Cloud Scheduler) |
+| `clients/fantrax_client.py` | Fantrax API client (standings, schedule, transactions, trades) |
+| `clients/firestore_client.py` | Firestore state management for seen transaction IDs |
+| `services/weekly_recap.py` | CLI entrypoint, Discord webhook posting |
+| `services/transaction_watcher.py` | Checks Fantrax for new transactions/trades, posts to Discord |
+| `utils/stats.py` | Stat computations (all-play, luck, streaks, category kings, etc.) |
+| `utils/discord_formatter.py` | Formats stats into Discord embed payloads |
+| `reports/keeper_report.py` | Keeper/roster analysis - rosters, ADP, scores, draft history, keeper costs |
+| `reports/season_finale.py` | Season report - standings, streaks, draft analysis, awards, luck stats |
+| `reports/draft_report.py` | Draft grading - grades each manager's draft based on ADP surplus |
 
 ## Cloud Functions
 
@@ -151,5 +153,5 @@ Required env vars for deployment (set via `gcloud`):
 
 - Built for **H2H Categories** leagues only (not rotisserie or points).
 - The Fantrax API is undocumented and reverse-engineered - response shapes may change without notice.
-- "Lower is better" categories (ERA, WHIP, BB/9, L, HRA) are hardcoded in `stats.py`. Update `LOWER_IS_BETTER` if your league categories differ.
+- "Lower is better" categories (ERA, WHIP, BB/9, L, HRA) are hardcoded in `utils/stats.py`. Update `LOWER_IS_BETTER` if your league categories differ.
 - The "latest completed period" is detected by checking which periods have non-zero matchup scores, not by date.

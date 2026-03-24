@@ -9,12 +9,15 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import requests
 
-from fantrax_client import FantraxClient
-from discord_formatter import format_transaction_embed, format_trade_embed
-from firestore_client import (
+from clients.fantrax_client import FantraxClient
+from utils.discord_formatter import format_transaction_embed, format_trade_embed
+from clients.firestore_client import (
     has_been_seeded,
     load_seen_ids,
     save_seen_ids,

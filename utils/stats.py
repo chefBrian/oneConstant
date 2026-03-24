@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import datetime
 
-from fantrax_client import FantraxClient
+from clients.fantrax_client import FantraxClient
 
 # Categories where lower is better
 LOWER_IS_BETTER = {"Earned Run Average", "WHIP Ratio", "Walks Allowed Per Nine Innings",
