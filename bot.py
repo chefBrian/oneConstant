@@ -45,6 +45,10 @@ def run_recap(league_id: str, webhook_url: str, period: int | None = None, dry_r
     print("Computing stats...")
     stats = compute_weekly_stats(client, period_num=period)
 
+    if "skipped" in stats:
+        print(f"Skipping: {stats['skipped']}")
+        return
+
     if "error" in stats:
         raise RuntimeError(stats["error"])
 

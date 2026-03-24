@@ -24,7 +24,7 @@ def compute_weekly_stats(client: FantraxClient, period_num: int | None = None) -
         period = next((p for p in schedule if p["period_num"] == period_num), None)
 
     if not period or not period["matchups"]:
-        return {"error": "No completed period found"}
+        return {"skipped": "No completed period found"}
 
     # Batch fetch standings + prev standings + transactions in one API call
     batch = client.fetch_period_data(period["period_num"])
@@ -49,14 +49,30 @@ def compute_weekly_stats(client: FantraxClient, period_num: int | None = None) -
     }
 
 
+def _parse_period_end(date_range: str) -> datetime | None:
+    """Parse the end date from a period date range string.
+
+    e.g. "(Mon Jun 16, 2025 - Sun Jun 22, 2025)" -> datetime(2025, 6, 22)
+    """
+    try:
+        stripped = date_range.strip("()")
+        _, end_str = stripped.split(" - ")
+        return datetime.strptime(end_str.strip(), "%a %b %d, %Y")
+    except (ValueError, AttributeError):
+        return None
+
+
 def _latest_completed(schedule: list[dict]) -> dict | None:
     latest = None
+    today = datetime.now().date()
     for p in schedule:
         if not p["matchups"]:
             continue
         m = p["matchups"][0]
         if m["away_wins"] + m["away_losses"] + m["away_ties"] > 0:
-            latest = p
+            end_date = _parse_period_end(p["date_range"])
+            if end_date and end_date.date() < today:
+                latest = p
     return latest
 
 
