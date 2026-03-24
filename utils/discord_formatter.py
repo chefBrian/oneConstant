@@ -18,6 +18,7 @@ SPACER = {"name": "\u200b", "value": DIVIDER, "inline": False}
 
 FANTRAX_STATS_URL = "https://www.fantrax.com/fantasy/league/{league_id}/standings;view=SEASON_STATS"
 WHITESPACE_IMG = "https://i.imgur.com/sv3vQS9.png"
+SILHOUETTE_IMG = "https://midfield.mlbstatic.com/v1/people/0/silo/current/480x480"
 
 
 def format_weekly_recap(stats: dict, league_id: str = "") -> list[dict]:
@@ -214,8 +215,7 @@ def format_transaction_embed(txn: dict, league_id: str = "") -> dict:
         "image": {"url": WHITESPACE_IMG},
     }
     headshot = (txn.get("added") or txn.get("dropped") or {}).get("headshot", "")
-    if headshot:
-        embed["thumbnail"] = {"url": headshot}
+    embed["thumbnail"] = {"url": headshot or SILHOUETTE_IMG}
     return embed
 
 
