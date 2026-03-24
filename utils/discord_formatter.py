@@ -1,7 +1,10 @@
 """Format weekly stats into Discord webhook embeds."""
 
-# Discord embed color
-EMBED_COLOR = 0x0099FF
+# Discord embed colors
+COLOR_BLUE = 0x0099FF
+COLOR_GREEN = 0x43B581
+COLOR_RED = 0xF04747
+COLOR_YELLOW = 0xF0B232
 
 # Custom server emojis
 PLUS = "<:plus:826595998188175360>"
@@ -49,7 +52,7 @@ def format_weekly_recap(stats: dict, league_id: str = "") -> list[dict]:
     fields.extend(_all_play_fields(stats))
 
     embed = {
-        "color": EMBED_COLOR,
+        "color": COLOR_BLUE,
         "title": period_name,
         "fields": fields,
     }
@@ -209,8 +212,17 @@ def format_transaction_embed(txn: dict, league_id: str = "") -> dict:
         lines.append(f"{MINUS} {_player_tag(txn['dropped'])}")
         lines.append(_player_links(txn["dropped"], league_id))
 
+    has_add = bool(txn.get("added"))
+    has_drop = bool(txn.get("dropped"))
+    if has_add and has_drop:
+        color = COLOR_BLUE
+    elif has_add:
+        color = COLOR_GREEN
+    else:
+        color = COLOR_RED
+
     embed = {
-        "color": EMBED_COLOR,
+        "color": color,
         "description": "\n".join(lines),
         "image": {"url": WHITESPACE_IMG},
     }
@@ -251,7 +263,7 @@ def format_trade_embed(trade: dict, league_id: str = "") -> dict:
         })
 
     return {
-        "color": EMBED_COLOR,
+        "color": COLOR_YELLOW,
         "author": {"name": "Trade"},
         "fields": fields,
         "footer": {"text": trade.get("date", "")},
