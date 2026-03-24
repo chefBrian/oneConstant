@@ -158,10 +158,8 @@ def _player_tag(player: dict) -> str:
     tag = "-".join(parts)
     suffix = f" ({tag})" if tag else ""
     badges = ""
-    if player.get("rookie"):
-        badges += " \U0001f331"  # 🌱
     if player.get("minors_eligible"):
-        badges += " \U0001f53b"  # 🔻
+        badges += " \U0001f331"  # 🌱
     return f"{player['name']}{suffix}{badges}"
 
 
