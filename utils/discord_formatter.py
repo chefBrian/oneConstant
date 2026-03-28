@@ -191,6 +191,19 @@ def _player_links(player: dict, league_id: str = "") -> str:
         savant = f"https://baseballsavant.mlb.com/savant-player/{url_name}-{mlb_id}"
         links.append(f"[Statcast]({savant})")
 
+    if mlb_id:
+        pos = player.get("position", "")
+        is_pitcher = pos in ("SP", "RP", "P")
+        if is_pitcher:
+            q = quote_plus(name)
+            video = f"https://www.mlb.com/video/?q={q}&qt=FREETEXT"
+        else:
+            from datetime import date
+            season = date.today().year
+            q = quote_plus(f'Season = [{season}] AND BatterId = [{mlb_id}] AND HitResult = ["Hit"] Order By Timestamp DESC')
+            video = f"https://www.mlb.com/video/?q={q}&of=1"
+        links.append(f"[Video]({video})")
+
     return "  ·  ".join(links)
 
 
