@@ -242,6 +242,31 @@ def format_transaction_embed(txn: dict, league_id: str = "") -> dict:
     return embed
 
 
+def format_transaction_summary(txn: dict) -> str:
+    """Plain-text one-liner for mobile push notification previews.
+
+    Rendered above the rich embed. Uses only unicode chars (no custom
+    emoji codes or markdown links, which appear raw in OS notifications).
+    """
+    parts = []
+    if txn.get("added"):
+        parts.append(f"\u2795 {_player_tag(txn['added'])}")
+    if txn.get("dropped"):
+        parts.append(f"\u2796 {_player_tag(txn['dropped'])}")
+    return "\n".join(parts)
+
+
+def format_trade_summary(trade: dict) -> str:
+    """Plain-text one-liner for trade push notification previews."""
+    from collections import Counter
+    counts = Counter(p["to_team"] for p in trade["players"])
+    teams = list(counts.items())
+    if len(teams) == 2:
+        (a, ac), (b, bc) = teams
+        return f"\U0001f504 Trade: {a} ({ac}) \u21c4 {b} ({bc})"
+    return "\U0001f504 Trade: " + " \u00b7 ".join(f"{t} ({c})" for t, c in teams)
+
+
 def format_trade_embed(trade: dict, league_id: str = "") -> dict:
     """Format a trade as a Discord embed.
 

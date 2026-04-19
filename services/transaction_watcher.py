@@ -16,7 +16,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import requests
 
 from clients.fantrax_client import FantraxClient
-from utils.discord_formatter import format_transaction_embed, format_trade_embed
+from utils.discord_formatter import (
+    format_transaction_embed,
+    format_trade_embed,
+    format_transaction_summary,
+    format_trade_summary,
+)
 from utils.mlb_lookup import enrich_mlb_ids
 from clients.firestore_client import (
     has_been_seeded,
@@ -31,13 +36,37 @@ def send_embed(
     embed: dict,
     username: str | None = None,
     avatar_url: str | None = None,
+    content: str | None = None,
+    clear_content_after: bool = False,
 ) -> bool:
-    """Send a single embed to Discord. Returns True on success."""
+    """Send a single embed to Discord. Returns True on success.
+
+    When `clear_content_after` is True, posts with `?wait=true` to retrieve the
+    message ID, then edits the message to clear `content`. Edits do not re-fire
+    push notifications, so this lets us surface a clean plain-text summary in
+    the mobile notification preview while leaving only the rich embed in-app.
+    """
     payload: dict = {"embeds": [embed]}
     if username:
         payload["username"] = username
     if avatar_url:
         payload["avatar_url"] = avatar_url
+    if content:
+        payload["content"] = content
+
+    if clear_content_after and content:
+        resp = requests.post(webhook_url, params={"wait": "true"}, json=payload)
+        if resp.status_code not in (200, 204):
+            print(f"  Discord error {resp.status_code}: {resp.text}", file=sys.stderr)
+            return False
+        msg_id = resp.json().get("id")
+        if msg_id:
+            edit = requests.patch(f"{webhook_url}/messages/{msg_id}", json={"content": ""})
+            if edit.status_code not in (200, 204):
+                print(f"  Edit failed {edit.status_code}: {edit.text}", file=sys.stderr)
+        print(f"  Posted to Discord")
+        return True
+
     resp = requests.post(webhook_url, json=payload)
     if resp.status_code == 204:
         print(f"  Posted to Discord")
@@ -90,28 +119,33 @@ def check_once(league_id: str, webhook_url: str | None, dry_run: bool) -> None:
     for txn in reversed(new_txns):
         enrich_mlb_ids(txn)
         embed = format_transaction_embed(txn, league_id)
+        summary = format_transaction_summary(txn)
         print(f"  NEW: {txn['team_name']} ({txn['type']})")
 
         if dry_run:
+            print(summary)
             print(json.dumps(embed, indent=2, ensure_ascii=False))
             print()
             successfully_posted.append(txn["tx_set_id"])
         elif webhook_url:
             if send_embed(webhook_url, embed, username=txn["team_name"],
-                          avatar_url=logos.get(txn["team_name"])):
+                          avatar_url=logos.get(txn["team_name"]),
+                          content=summary, clear_content_after=True):
                 successfully_posted.append(txn["tx_set_id"])
 
     for trade in reversed(new_trades):
         embed = format_trade_embed(trade, league_id)
+        summary = format_trade_summary(trade)
         player_names = [p["name"] for p in trade["players"]]
         print(f"  NEW TRADE: {', '.join(player_names[:4])}...")
 
         if dry_run:
+            print(summary)
             print(json.dumps(embed, indent=2, ensure_ascii=False))
             print()
             successfully_posted.append(trade["tx_set_id"])
         elif webhook_url:
-            if send_embed(webhook_url, embed):
+            if send_embed(webhook_url, embed, content=summary, clear_content_after=True):
                 successfully_posted.append(trade["tx_set_id"])
 
     save_seen_ids(league_id, successfully_posted)
@@ -144,13 +178,16 @@ def main():
         if txns:
             enrich_mlb_ids(txns[0])
             embed = format_transaction_embed(txns[0], args.league_id)
+            summary = format_transaction_summary(txns[0])
             logos = client.team_logos
             team = txns[0]["team_name"]
             print("Most recent transaction:")
+            print(summary)
             print(json.dumps(embed, indent=2, ensure_ascii=False))
             if not args.dry_run and args.webhook_url:
                 send_embed(args.webhook_url, embed, username=team,
-                           avatar_url=logos.get(team))
+                           avatar_url=logos.get(team),
+                           content=summary, clear_content_after=True)
         else:
             print("No transactions found")
         return
