@@ -5,6 +5,7 @@ COLOR_BLUE = 0x0099FF
 COLOR_GREEN = 0x43B581
 COLOR_RED = 0xF04747
 COLOR_YELLOW = 0xF0B232
+COLOR_ORANGE = 0xE67E22
 
 # Custom server emojis
 PLUS = "<:plus:826595998188175360>"
@@ -225,8 +226,8 @@ def format_transaction_embed(txn: dict, league_id: str = "") -> dict:
 
     has_add = bool(txn.get("added"))
     has_drop = bool(txn.get("dropped"))
-    if has_add and has_drop:
-        color = COLOR_BLUE
+    if has_add and txn.get("claim_type") == "WW":
+        color = COLOR_ORANGE
     elif has_add:
         color = COLOR_GREEN
     else:
