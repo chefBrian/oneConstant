@@ -263,6 +263,115 @@ class FantraxClient:
                 latest = p
         return latest
 
+    # --- Season Stats ---
+
+    def season_stats(self) -> dict:
+        """Get season-to-date category-point breakdown for power rankings.
+
+        Uses getStandings with view=SEASON_STATS, which returns hitting and
+        pitching point totals per team (Fantrax awards 12 pts to the best team
+        in each category, down to 1 for the worst, with fractional values for
+        ties). Higher sum = better.
+
+        Returns:
+            {
+                "teams": [
+                    {
+                        "team_id", "team_name",
+                        "hitting_points": float,
+                        "pitching_points": float,
+                        "total_points": float,
+                        "hitting_cats": {cat_name: points, ...},
+                        "pitching_cats": {cat_name: points, ...},
+                    },
+                    ...
+                ],
+                "hitting_categories": [cat_name, ...],
+                "pitching_categories": [cat_name, ...],
+            }
+        """
+        data = self._call("getStandings", view="SEASON_STATS")
+        tables = data["tableList"]
+
+        # Find the Hitting and Pitching aggregate tables by caption.
+        hit_table = next(t for t in tables if t.get("caption", "").strip() == "Standings - Hitting")
+        pit_table = next(t for t in tables if t.get("caption", "").strip() == "Standings - Pitching")
+
+        def parse_aggregate(table: dict) -> dict[str, float]:
+            """Return {team_name: points} from a Standings - Hitting/Pitching table."""
+            out = {}
+            for row in table["rows"]:
+                team_name = row["fixedCells"][1]["content"]
+                points = float(row["cells"][0]["content"])
+                out[team_name] = points
+            return out
+
+        hit_pts = parse_aggregate(hit_table)
+        pit_pts = parse_aggregate(pit_table)
+
+        # Per-category tables come after the aggregate tables; each has a 'rank'
+        # column as its first header cell. Split hitting vs pitching using the
+        # short-name column from the aggregate table headers (the 'sh' key cells).
+        def cat_short_names(table: dict) -> list[str]:
+            return [c["shortName"] for c in table["header"]["cells"] if c.get("key") == "sh"]
+
+        # Pitching is unambiguous (IP, ERA, WHIP, L, QS, BB/9, K/9, HR allowed, NS).
+        # Hitting cats can include AB and H as display-only columns; we only care
+        # about the per-cat rank tables that exist below.
+        pit_cat_shorts = set(cat_short_names(pit_table))
+
+        per_cat_tables = [t for t in tables if t.get("header", {}).get("cells")
+                          and t["header"]["cells"][0].get("key") == "rank"]
+
+        hitting_cats: list[str] = []
+        pitching_cats: list[str] = []
+        per_team_cats: dict[str, dict[str, float]] = {}  # team -> {cat: points}
+
+        # Track whether we've seen a uniquely-pitching cat yet. Once we have,
+        # any ambiguous shortName (e.g. "HR" which appears for both hitting HR
+        # and pitching HR allowed) belongs to pitching.
+        seen_pitching = False
+        unique_pitching = pit_cat_shorts - set(cat_short_names(hit_table))
+
+        for table in per_cat_tables:
+            cat_name = table["caption"].strip()
+            short = table["header"]["cells"][4]["shortName"]
+            if short in unique_pitching or (seen_pitching and short in pit_cat_shorts):
+                pitching_cats.append(cat_name)
+                seen_pitching = True
+                bucket = "pitching"
+            else:
+                hitting_cats.append(cat_name)
+                bucket = "hitting"
+
+            for row in table["rows"]:
+                cells = row["cells"]
+                team_name = cells[3]["content"]
+                points = float(cells[1]["content"])
+                per_team_cats.setdefault(team_name, {"hitting": {}, "pitching": {}})
+                per_team_cats[team_name][bucket][cat_name] = points
+
+        # Reverse team_name -> team_id from team_map.
+        name_to_id = {name: tid for tid, name in self.team_map.items()}
+
+        teams = []
+        for team_name in hit_pts.keys():
+            teams.append({
+                "team_id": name_to_id.get(team_name, ""),
+                "team_name": team_name,
+                "hitting_points": hit_pts[team_name],
+                "pitching_points": pit_pts.get(team_name, 0.0),
+                "total_points": hit_pts[team_name] + pit_pts.get(team_name, 0.0),
+                "hitting_cats": per_team_cats.get(team_name, {}).get("hitting", {}),
+                "pitching_cats": per_team_cats.get(team_name, {}).get("pitching", {}),
+            })
+
+        return {
+            "teams": teams,
+            "hitting_categories": hitting_cats,
+            "pitching_categories": pitching_cats,
+        }
+
     # --- Transactions ---
 
     def transactions(self, count: int = 50) -> list[dict]:
