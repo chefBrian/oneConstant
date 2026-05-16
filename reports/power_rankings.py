@@ -99,7 +99,7 @@ def format_discord_embed(ranked: list[dict], hit_cats: list[str], pit_cats: list
     best_pit = max(ranked, key=lambda t: t["pitching_points"])
     fields = [
         {
-            "name": "\U0001f4aa Top Offense",
+            "name": "\U0001f4aa Top Hitting",
             "value": f"{best_hit['team_name']}\n{_fmt_points(best_hit['hitting_points'])} pts",
             "inline": True,
         },
