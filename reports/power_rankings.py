@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from clients.fantrax_client import FantraxClient
-from utils.discord_formatter import COLOR_BLUE, DIVIDER
+from utils.discord_formatter import COLOR_BLUE, DIVIDER, SPACER
 
 LEAGUE_ID = os.environ.get("FANTRAX_LEAGUE_ID", "uo0es7lom23shg6b")
 
@@ -77,38 +77,37 @@ def print_cli_table(ranked: list[dict], hit_cats: list[str], pit_cats: list[str]
 
 def format_discord_embed(ranked: list[dict], hit_cats: list[str], pit_cats: list[str],
                           league_id: str, period_num: int | None = None) -> dict:
-    name_w = max(len(t["team_name"]) for t in ranked)
-
-    lines = [f"`{'#':>2}  {'Team':<{name_w}}  {'Hit':>5}  {'Pit':>5}  {'Tot':>5}`"]
+    # One field per team, mirroring the weekly recap standings layout so it
+    # reflows cleanly on mobile (no monospace table).
+    fields = []
     for t in ranked:
         rank = t["overall_rank"]
-        prefix = RANK_EMOJI.get(rank, f"{rank:>2}")
-        # Use code-block-style line for alignment on desktop and mobile.
-        lines.append(
-            f"`{rank:>2}  {t['team_name']:<{name_w}}  "
-            f"{_fmt_points(t['hitting_points']):>5}  "
-            f"{_fmt_points(t['pitching_points']):>5}  "
-            f"{_fmt_points(t['total_points']):>5}`"
-            + (f"  {prefix}" if rank <= 3 else "")
+        medal = RANK_EMOJI.get(rank, "")
+        prefix = f"{medal} " if medal else ""
+        value = (
+            f"{prefix}{rank}. **{t['team_name']}** — "
+            f"{_fmt_points(t['total_points'])} "
+            f"({_fmt_points(t['hitting_points'])} H / {_fmt_points(t['pitching_points'])} P)"
         )
-
-    description = "\n".join(lines)
+        fields.append({"name": "", "value": value, "inline": False})
+        # Visual break between playoff (top 6) and non-playoff teams
+        if rank == 6:
+            fields.append({"name": "", "value": DIVIDER, "inline": False})
 
     # Highlight best in each phase
     best_hit = max(ranked, key=lambda t: t["hitting_points"])
     best_pit = max(ranked, key=lambda t: t["pitching_points"])
-    fields = [
-        {
-            "name": "\U0001f4aa Top Hitting",
-            "value": f"{best_hit['team_name']}\n{_fmt_points(best_hit['hitting_points'])} pts",
-            "inline": True,
-        },
-        {
-            "name": "⚾ Top Pitching",
-            "value": f"{best_pit['team_name']}\n{_fmt_points(best_pit['pitching_points'])} pts",
-            "inline": True,
-        },
-    ]
+    fields.append(SPACER)
+    fields.append({
+        "name": "\U0001f4aa Top Hitting",
+        "value": f"{best_hit['team_name']}\n{_fmt_points(best_hit['hitting_points'])} pts",
+        "inline": True,
+    })
+    fields.append({
+        "name": "⚾ Top Pitching",
+        "value": f"{best_pit['team_name']}\n{_fmt_points(best_pit['pitching_points'])} pts",
+        "inline": True,
+    })
 
     title = "\U0001f4ca Power Rankings"
     if period_num is not None:
@@ -118,7 +117,6 @@ def format_discord_embed(ranked: list[dict], hit_cats: list[str], pit_cats: list
         "color": COLOR_BLUE,
         "title": title,
         "url": f"https://www.fantrax.com/fantasy/league/{league_id}/standings;view=SEASON_STATS",
-        "description": description,
         "fields": fields,
     }
     return embed
