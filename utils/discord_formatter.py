@@ -24,6 +24,10 @@ FANTRAX_STATS_URL = "https://www.fantrax.com/fantasy/league/{league_id}/standing
 WHITESPACE_IMG = "https://i.imgur.com/sv3vQS9.png"
 SILHOUETTE_IMG = "https://midfield.mlbstatic.com/v1/people/0/silo/current/480x480"
 
+# Webhook avatar URLs (Twemoji PNGs via jsdelivr)
+STANDINGS_AVATAR_URL = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f5de.png"  # 🗞️
+POWER_RANKINGS_AVATAR_URL = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f4ca.png"  # 📊
+
 
 def format_weekly_recap(stats: dict, league_id: str = "") -> list[dict]:
     """Build Discord webhook embeds from computed stats.

@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from clients.fantrax_client import FantraxClient
-from utils.discord_formatter import COLOR_BLUE, DIVIDER, SPACER
+from utils.discord_formatter import BLANK, COLOR_BLUE, POWER_RANKINGS_AVATAR_URL, SPACER
 
 LEAGUE_ID = os.environ.get("FANTRAX_LEAGUE_ID", "uo0es7lom23shg6b")
 
@@ -76,23 +76,21 @@ def print_cli_table(ranked: list[dict], hit_cats: list[str], pit_cats: list[str]
 
 
 def format_discord_embed(ranked: list[dict], hit_cats: list[str], pit_cats: list[str],
-                          league_id: str, period_num: int | None = None) -> dict:
+                          league_id: str, period_num: int | None = None,
+                          total_periods: int | None = None) -> dict:
     # One field per team, mirroring the weekly recap standings layout so it
-    # reflows cleanly on mobile (no monospace table).
+    # reflows cleanly on mobile (no monospace table). BLANK pads non-medaled
+    # rows so all team names align in a single column.
     fields = []
     for t in ranked:
         rank = t["overall_rank"]
-        medal = RANK_EMOJI.get(rank, "")
-        prefix = f"{medal} " if medal else ""
+        icon = RANK_EMOJI.get(rank, BLANK)
         value = (
-            f"{prefix}{rank}. **{t['team_name']}** — "
+            f"{icon} {rank}. **{t['team_name']}** - "
             f"{_fmt_points(t['total_points'])} "
             f"({_fmt_points(t['hitting_points'])} H / {_fmt_points(t['pitching_points'])} P)"
         )
         fields.append({"name": "", "value": value, "inline": False})
-        # Visual break between playoff (top 6) and non-playoff teams
-        if rank == 6:
-            fields.append({"name": "", "value": DIVIDER, "inline": False})
 
     # Highlight best in each phase
     best_hit = max(ranked, key=lambda t: t["hitting_points"])
@@ -109,9 +107,12 @@ def format_discord_embed(ranked: list[dict], hit_cats: list[str], pit_cats: list
         "inline": True,
     })
 
-    title = "\U0001f4ca Power Rankings"
-    if period_num is not None:
-        title += f" (Week {period_num}/{REG_SEASON_PERIODS})"
+    if period_num is not None and total_periods:
+        title = f"Week {period_num} / {total_periods}"
+    elif period_num is not None:
+        title = f"Week {period_num}"
+    else:
+        title = "Power Rankings"
 
     embed = {
         "color": COLOR_BLUE,
@@ -137,7 +138,15 @@ def run_power_rankings(
     """
     client = FantraxClient(league_id)
 
-    latest = client.latest_completed_period()
+    schedule = client.schedule()
+    total_periods = len(schedule)
+    latest = None
+    for p in schedule:
+        if not p["matchups"]:
+            continue
+        m = p["matchups"][0]
+        if m["away_wins"] + m["away_losses"] + m["away_ties"] > 0:
+            latest = p
     period_num = latest["period_num"] if latest else None
 
     if not force and period_num not in POST_PERIODS:
@@ -151,6 +160,7 @@ def run_power_rankings(
     embed = format_discord_embed(
         ranked, ss["hitting_categories"], ss["pitching_categories"], league_id,
         period_num=period_num,
+        total_periods=total_periods,
     )
 
     if dry_run:
@@ -160,7 +170,12 @@ def run_power_rankings(
     if not webhook_url:
         raise RuntimeError("DISCORD_WEBHOOK_URL required to post")
 
-    resp = requests.post(webhook_url, json={"embeds": [embed]})
+    payload = {
+        "username": "Power Rankings",
+        "avatar_url": POWER_RANKINGS_AVATAR_URL,
+        "embeds": [embed],
+    }
+    resp = requests.post(webhook_url, json=payload)
     if resp.status_code != 204:
         print(f"Discord error {resp.status_code}: {resp.text}", file=sys.stderr)
         resp.raise_for_status()

@@ -19,7 +19,7 @@ import requests
 
 from clients.fantrax_client import FantraxClient
 from utils.stats import compute_weekly_stats
-from utils.discord_formatter import format_weekly_recap
+from utils.discord_formatter import format_weekly_recap, STANDINGS_AVATAR_URL
 
 
 def send_to_discord(webhook_url: str, embeds: list[dict]) -> None:
@@ -30,7 +30,11 @@ def send_to_discord(webhook_url: str, embeds: list[dict]) -> None:
     batch_size = 10
     for i in range(0, len(embeds), batch_size):
         batch = embeds[i:i + batch_size]
-        payload = {"embeds": batch}
+        payload = {
+            "username": "Weekly Report",
+            "avatar_url": STANDINGS_AVATAR_URL,
+            "embeds": batch,
+        }
         resp = requests.post(webhook_url, json=payload)
         if resp.status_code == 204:
             print(f"Posted {len(batch)} embeds to Discord")
