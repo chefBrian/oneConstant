@@ -14,7 +14,7 @@ UP = "<:upchevron:1115050941834596454>"
 DOWN = "<:downchevron:1115050940681158717>"
 BLANK = "<:blank:1085633856868208640>"
 TRADE = "<:trade:826598334521147433>"
-DIVIDER = "\u2500" * 45
+DIVIDER = "\u2500" * 43
 
 # Spacer fields for visual breathing room
 SPACER = {"name": "\u200b", "value": DIVIDER, "inline": False}

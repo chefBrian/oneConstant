@@ -29,9 +29,8 @@ LEAGUE_ID = os.environ.get("FANTRAX_LEAGUE_ID", "uo0es7lom23shg6b")
 
 RANK_EMOJI = {1: "\U0001f947", 2: "\U0001f948", 3: "\U0001f949"}
 
-# Post on the Monday after weeks 4, 8, 12, 16 complete.
-# Week 20 is skipped since the season finale report covers end-of-season.
-POST_PERIODS = {4, 8, 12, 16}
+# Post on the Friday after weeks 4, 8, 12, 16, 20 complete.
+POST_PERIODS = {4, 8, 12, 16, 20}
 REG_SEASON_PERIODS = 20
 
 
