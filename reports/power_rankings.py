@@ -112,7 +112,7 @@ def format_discord_embed(ranked: list[dict], hit_cats: list[str], pit_cats: list
     elif period_num is not None:
         title = f"Week {period_num}"
     else:
-        title = "Power Rankings"
+        title = "Standings"
 
     embed = {
         "color": COLOR_BLUE,
@@ -171,7 +171,7 @@ def run_power_rankings(
         raise RuntimeError("DISCORD_WEBHOOK_URL required to post")
 
     payload = {
-        "username": "Power Rankings",
+        "username": "What if we played Roto",
         "avatar_url": POWER_RANKINGS_AVATAR_URL,
         "embeds": [embed],
     }
